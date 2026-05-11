@@ -8,9 +8,23 @@ from typing import Any
 import pandas as pd
 from openai import OpenAI
 
-from .config import DEFAULT_MODEL, FAST_MODEL, REASONING_MODEL, WEB_MODEL, load_environment
+from .config import (
+    DEFAULT_MODEL,
+    FAST_MODEL,
+    REASONING_MODEL,
+    WEB_MODEL,
+    load_environment,
+)
 from .logging_utils import get_logger
 
+"""CAM'S COMMENTS:
+agents.py
+
+   * parse\_agent\_json??
+   * could improve the initialisation prompts?
+
+
+"""
 
 AGENT_NAMES = [
     "EnergyAgent",
@@ -21,7 +35,12 @@ AGENT_NAMES = [
     "LandPlanningAgent",
 ]
 
-REASONING_AGENTS = {"CriticAgent", "SynthesisAgent", "PlannerCriticAgent", "ExplainerAgent"}
+REASONING_AGENTS = {
+    "CriticAgent",
+    "SynthesisAgent",
+    "PlannerCriticAgent",
+    "ExplainerAgent",
+}
 WEB_RESEARCH_AGENTS = {"PolicyResearchAgent", "GrantResearchAgent"}
 
 
@@ -50,17 +69,27 @@ def parse_agent_json(text: str, agent: str) -> dict[str, Any]:
             parsed.setdefault("risks", [])
             parsed.setdefault("confidence", "medium")
             if isinstance(parsed.get("key_points"), dict):
-                parsed["key_points"] = [f"{key}: {value}" for key, value in parsed["key_points"].items()]
+                parsed["key_points"] = [
+                    f"{key}: {value}" for key, value in parsed["key_points"].items()
+                ]
             elif isinstance(parsed.get("key_points"), str):
                 parsed["key_points"] = [parsed["key_points"]]
             if isinstance(parsed.get("risks"), dict):
-                parsed["risks"] = [f"{key}: {value}" for key, value in parsed["risks"].items()]
+                parsed["risks"] = [
+                    f"{key}: {value}" for key, value in parsed["risks"].items()
+                ]
             elif isinstance(parsed.get("risks"), str):
                 parsed["risks"] = [parsed["risks"]]
             return parsed
     except Exception:
         pass
-    return {"agent": agent, "summary": text, "key_points": [], "risks": ["JSON parsing failed."], "confidence": "low"}
+    return {
+        "agent": agent,
+        "summary": text,
+        "key_points": [],
+        "risks": ["JSON parsing failed."],
+        "confidence": "low",
+    }
 
 
 class AgentRunner:
@@ -87,7 +116,11 @@ class AgentRunner:
             self.enabled = bool(os.getenv("OPENAI_API_KEY"))
         else:
             self.enabled = enabled and bool(os.getenv("OPENAI_API_KEY"))
-            self.disabled_reason = "OpenAI agents disabled by CLI flag" if not enabled else self.disabled_reason
+            self.disabled_reason = (
+                "OpenAI agents disabled by CLI flag"
+                if not enabled
+                else self.disabled_reason
+            )
         self.client = OpenAI(timeout=timeout) if self.enabled else None
 
     def model_for_agent(self, agent: str) -> str:
@@ -97,9 +130,13 @@ class AgentRunner:
             return self.reasoning_model or self.model
         return self.fast_model or self.model
 
-    def run(self, agent: str, query: str, workload: str, payload: dict[str, Any]) -> dict[str, Any]:
+    def run(
+        self, agent: str, query: str, workload: str, payload: dict[str, Any]
+    ) -> dict[str, Any]:
         if not self.enabled or self.client is None:
-            logger.info("%s: using deterministic fallback (%s).", agent, self.disabled_reason)
+            logger.info(
+                "%s: using deterministic fallback (%s).", agent, self.disabled_reason
+            )
             return fallback(agent, self.disabled_reason)
         system = (
             f"You are {agent}, a specialist data-centre site-selection analyst. "
@@ -132,7 +169,9 @@ class AgentRunner:
                 return parse_agent_json(text, agent)
             except Exception as exc:
                 last_error = exc
-                logger.warning("%s: model call attempt %s failed: %s.", agent, attempt + 1, exc)
+                logger.warning(
+                    "%s: model call attempt %s failed: %s.", agent, attempt + 1, exc
+                )
                 time.sleep(0.5 * (attempt + 1))
         logger.info("%s: using deterministic fallback after model failure.", agent)
         return fallback(agent, f"model call failed: {last_error}")
@@ -142,10 +181,14 @@ class AgentRunner:
         if not self.enable_web:
             return fallback(agent, "web research disabled")
         if not self.enabled or self.client is None:
-            logger.info("%s: using deterministic fallback (%s).", agent, self.disabled_reason)
+            logger.info(
+                "%s: using deterministic fallback (%s).", agent, self.disabled_reason
+            )
             return fallback(agent, self.disabled_reason)
         if not hasattr(self.client, "responses"):
-            return fallback(agent, "installed OpenAI client does not expose the Responses API")
+            return fallback(
+                agent, "installed OpenAI client does not expose the Responses API"
+            )
         request = {
             "query": query,
             "policy_context": payload,
@@ -157,7 +200,9 @@ class AgentRunner:
         }
         last_error = None
         selected_model = self.model_for_agent(agent)
-        logger.info("%s: calling OpenAI model '%s' with web search.", agent, selected_model)
+        logger.info(
+            "%s: calling OpenAI model '%s' with web search.", agent, selected_model
+        )
         logger.debug("%s web payload keys=%s.", agent, list(payload.keys()))
         for attempt in range(self.max_retries + 1):
             try:
@@ -170,11 +215,18 @@ class AgentRunner:
                 text = getattr(response, "output_text", "") or ""
                 parsed = parse_agent_json(text, agent)
                 parsed.setdefault("sources", [])
-                logger.debug("%s web response chars=%s sources=%s.", agent, len(text), len(parsed.get("sources", [])))
+                logger.debug(
+                    "%s web response chars=%s sources=%s.",
+                    agent,
+                    len(text),
+                    len(parsed.get("sources", [])),
+                )
                 return parsed
             except Exception as exc:
                 last_error = exc
-                logger.warning("%s: web model call attempt %s failed: %s.", agent, attempt + 1, exc)
+                logger.warning(
+                    "%s: web model call attempt %s failed: %s.", agent, attempt + 1, exc
+                )
                 time.sleep(0.5 * (attempt + 1))
         return fallback(agent, f"web model call failed: {last_error}")
 
@@ -201,24 +253,55 @@ def top_rows_payload(ranked, top_k: int = 5) -> list[dict[str, Any]]:
         "flood_zone_overlap_warning",
         "data_quality_notes",
     ]
-    records = ranked.head(top_k)[[k for k in keep if k in ranked.columns]].to_dict(orient="records")
-    return [{k: (None if pd.isna(row.get(k)) else row.get(k)) for k in keep if k in row} for row in records]
+    records = ranked.head(top_k)[[k for k in keep if k in ranked.columns]].to_dict(
+        orient="records"
+    )
+    return [
+        {k: (None if pd.isna(row.get(k)) else row.get(k)) for k in keep if k in row}
+        for row in records
+    ]
 
 
-def run_specialist_agents(runner: AgentRunner, query: str, workload: str, ranked, top_k: int) -> list[dict[str, Any]]:
+def run_specialist_agents(
+    runner: AgentRunner, query: str, workload: str, ranked, top_k: int
+) -> list[dict[str, Any]]:
     rows = top_rows_payload(ranked, top_k)
     prompts = {
-        "EnergyAgent": {"focus": "renewable capacity, operational versus pipeline energy, and GSP availability", "rows": rows},
-        "WaterAgent": {"focus": "placeholder water scores and missing water-stress data", "rows": rows},
-        "ClimateCoolingAgent": {"focus": "latitude cooling proxy and missing climate data", "rows": rows},
-        "LatencyAgent": {"focus": "distances to data-derived demand hubs and workload latency trade-offs", "rows": rows},
-        "ResilienceAgent": {"focus": "flood-zone flags, missingness, resilience constraints", "rows": rows},
-        "LandPlanningAgent": {"focus": "brownfield land availability and planning risk", "rows": rows},
+        "EnergyAgent": {
+            "focus": "renewable capacity, operational versus pipeline energy, and GSP availability",
+            "rows": rows,
+        },
+        "WaterAgent": {
+            "focus": "placeholder water scores and missing water-stress data",
+            "rows": rows,
+        },
+        "ClimateCoolingAgent": {
+            "focus": "latitude cooling proxy and missing climate data",
+            "rows": rows,
+        },
+        "LatencyAgent": {
+            "focus": "distances to data-derived demand hubs and workload latency trade-offs",
+            "rows": rows,
+        },
+        "ResilienceAgent": {
+            "focus": "flood-zone flags, missingness, resilience constraints",
+            "rows": rows,
+        },
+        "LandPlanningAgent": {
+            "focus": "brownfield land availability and planning risk",
+            "rows": rows,
+        },
     }
     return [runner.run(agent, query, workload, prompts[agent]) for agent in AGENT_NAMES]
 
 
-def run_critic(runner: AgentRunner, query: str, workload: str, ranked, agent_summaries: list[dict[str, Any]]) -> dict[str, Any]:
+def run_critic(
+    runner: AgentRunner,
+    query: str,
+    workload: str,
+    ranked,
+    agent_summaries: list[dict[str, Any]],
+) -> dict[str, Any]:
     payload = {
         "ranked_table": top_rows_payload(ranked, 8),
         "agent_summaries": agent_summaries,
@@ -227,7 +310,14 @@ def run_critic(runner: AgentRunner, query: str, workload: str, ranked, agent_sum
     return runner.run("CriticAgent", query, workload, payload)
 
 
-def run_synthesis(runner: AgentRunner, query: str, workload: str, ranked, agent_summaries: list[dict[str, Any]], critic: dict[str, Any]) -> dict[str, Any]:
+def run_synthesis(
+    runner: AgentRunner,
+    query: str,
+    workload: str,
+    ranked,
+    agent_summaries: list[dict[str, Any]],
+    critic: dict[str, Any],
+) -> dict[str, Any]:
     payload = {
         "ranked_table": top_rows_payload(ranked, 8),
         "agent_summaries": agent_summaries,

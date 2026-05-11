@@ -4,6 +4,11 @@ import logging
 import sys
 from pathlib import Path
 
+"""CAM'S COMMENTS:
+logging\_utils.py
+
+    * Which info do we want in the logs?
+"""
 
 LOGGER_NAME = "data_centre_site_selector"
 

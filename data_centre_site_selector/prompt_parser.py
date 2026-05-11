@@ -6,22 +6,69 @@ from .config import WORKLOAD_WEIGHTS
 from .logging_utils import get_logger
 from .schemas import UserConstraints
 
+"""CAM'S COMMENTS:
+prompt\_parset.py
+
+    * how should we choose the keywords
+    * Non\_UK\_Hints, i.e. a list of other countries? lol. Don't we ideally just want it to stick to the country given? Shouldn't hardcode all countries surely to check we are asking for the UK (if we are constraining to that).
+    * Suggested constraints?
+"""
 
 logger = get_logger("prompt")
 
 
 WORKLOAD_KEYWORDS = {
-    "ai_training": ("ai training", "training", "gpu cluster", "gpu", "model training", "hpc"),
-    "ai_inference": ("inference", "serving", "llm serving", "real-time ai", "ai service"),
-    "financial_low_latency": ("financial", "low latency", "trading", "exchange", "market data"),
+    "ai_training": (
+        "ai training",
+        "training",
+        "gpu cluster",
+        "gpu",
+        "model training",
+        "hpc",
+    ),
+    "ai_inference": (
+        "inference",
+        "serving",
+        "llm serving",
+        "real-time ai",
+        "ai service",
+    ),
+    "financial_low_latency": (
+        "financial",
+        "low latency",
+        "trading",
+        "exchange",
+        "market data",
+    ),
     "enterprise_colocation": ("colocation", "colo", "enterprise", "saas", "cloud"),
-    "backup_disaster_recovery": ("backup", "disaster recovery", "dr", "resilience", "secondary"),
+    "backup_disaster_recovery": (
+        "backup",
+        "disaster recovery",
+        "dr",
+        "resilience",
+        "secondary",
+    ),
 }
 
 OPTIMISATION_KEYWORDS = {
     "co2": ("co2", "carbon", "emission", "net zero", "renewable", "green"),
-    "population_strain": ("water strain", "energy strain", "population", "community", "populus", "water stress"),
-    "political_favour": ("political", "planning", "grant", "tax", "policy", "favour", "disfavour"),
+    "population_strain": (
+        "water strain",
+        "energy strain",
+        "population",
+        "community",
+        "populus",
+        "water stress",
+    ),
+    "political_favour": (
+        "political",
+        "planning",
+        "grant",
+        "tax",
+        "policy",
+        "favour",
+        "disfavour",
+    ),
     "cost": ("cheap", "cost", "budget", "capex", "opex"),
     "latency": ("latency", "near london", "near users", "connectivity"),
     "resilience": ("flood", "resilience", "risk", "backup", "climate"),
@@ -38,7 +85,18 @@ REGION_ALIASES: dict[str, tuple[str, str]] = {
     "northern ireland": ("country", "Northern Ireland"),
 }
 
-NON_UK_HINTS = ("germany", "france", "republic of ireland", "dublin", "netherlands", "amsterdam", "us", "usa", "america", "europe")
+NON_UK_HINTS = (
+    "germany",
+    "france",
+    "republic of ireland",
+    "dublin",
+    "netherlands",
+    "amsterdam",
+    "us",
+    "usa",
+    "america",
+    "europe",
+)
 
 SUGGESTED_CONSTRAINTS = [
     "Target compute capacity in MW or an expected rack/GPU footprint.",
@@ -85,9 +143,20 @@ def detect_workload(text: str, fallback: str = "ai_training") -> str:
 
 def detect_region(text: str) -> tuple[str, str | None, str | None]:
     lowered = text.lower()
-    invalid = next((hint for hint in NON_UK_HINTS if re.search(rf"\b{re.escape(hint)}\b", lowered)), None)
+    invalid = next(
+        (
+            hint
+            for hint in NON_UK_HINTS
+            if re.search(rf"\b{re.escape(hint)}\b", lowered)
+        ),
+        None,
+    )
     matches = sorted(
-        ((alias, value) for alias, value in REGION_ALIASES.items() if re.search(rf"\b{re.escape(alias)}\b", lowered)),
+        (
+            (alias, value)
+            for alias, value in REGION_ALIASES.items()
+            if re.search(rf"\b{re.escape(alias)}\b", lowered)
+        ),
         key=lambda item: len(item[0]),
         reverse=True,
     )
@@ -99,8 +168,16 @@ def detect_region(text: str) -> tuple[str, str | None, str | None]:
 
 def detect_choices(text: str) -> tuple[list[str], list[str]]:
     lowered = text.lower()
-    choices = [key for key, keywords in OPTIMISATION_KEYWORDS.items() if any(contains_keyword(lowered, keyword) for keyword in keywords)]
-    policies = [choice for choice in choices if choice in {"political_favour", "land_use", "resilience"}]
+    choices = [
+        key
+        for key, keywords in OPTIMISATION_KEYWORDS.items()
+        if any(contains_keyword(lowered, keyword) for keyword in keywords)
+    ]
+    policies = [
+        choice
+        for choice in choices
+        if choice in {"political_favour", "land_use", "resilience"}
+    ]
     if not choices:
         choices = ["co2", "population_strain", "political_favour", "cost"]
     return choices, policies
@@ -120,9 +197,17 @@ def parse_user_constraints(
     compute_mw: float | None = None,
     optimisation_choices: list[str] | None = None,
 ) -> UserConstraints:
-    combined = " ".join(part for part in [prompt, region or "", " ".join(optimisation_choices or [])] if part)
+    combined = " ".join(
+        part
+        for part in [prompt, region or "", " ".join(optimisation_choices or [])]
+        if part
+    )
     region_level, region_text, invalid_region = detect_region(combined)
-    if region and region_level == "uk" and region.lower() not in {"uk", "uk-wide", "united kingdom", "britain"}:
+    if (
+        region
+        and region_level == "uk"
+        and region.lower() not in {"uk", "uk-wide", "united kingdom", "britain"}
+    ):
         region_level, region_text = "city", region
     choices, policies = detect_choices(combined)
     constraints = UserConstraints(
@@ -144,5 +229,9 @@ def parse_user_constraints(
         constraints.unspecified_fields.append("region")
         constraints.region_text = "UK-wide"
     constraints.suggested_constraints = SUGGESTED_CONSTRAINTS
-    logger.debug("Parsed user constraints from prompt=%r result=%s.", prompt, constraints.to_dict())
+    logger.debug(
+        "Parsed user constraints from prompt=%r result=%s.",
+        prompt,
+        constraints.to_dict(),
+    )
     return constraints

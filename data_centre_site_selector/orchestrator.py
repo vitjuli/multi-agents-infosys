@@ -4,31 +4,64 @@ import pandas as pd
 
 from .agents import AgentRunner, run_critic, run_specialist_agents, run_synthesis
 from .data_analysis import add_production_scores
-from .data_paths import CANDIDATE_FEATURES_CSV, LATEST_RANKINGS_CSV, LATEST_REPORT_MD, LATEST_SUMMARY_REPORT_MD, ensure_dirs
+from .data_paths import (
+    CANDIDATE_FEATURES_CSV,
+    LATEST_RANKINGS_CSV,
+    LATEST_REPORT_MD,
+    LATEST_SUMMARY_REPORT_MD,
+    ensure_dirs,
+)
 from .logging_utils import get_logger
 from .planner import run_planner
 from .preprocess import build_candidate_features
 from .prompt_parser import parse_user_constraints
-from .report import build_markdown_report, production_markdown_report, production_terminal_report, terminal_report
+from .report import (
+    build_markdown_report,
+    production_markdown_report,
+    production_terminal_report,
+    terminal_report,
+)
 
+"""CAM'S COMMENTS:
+orchestrator.py
 
+    * **load\_or\_build\_features**
+
+      * So is all our data going to be in pandas dataframes?
+    * **run\_site\_selection**
+
+      * parameters here?
+    * idk what is going on...
+"""
 logger = get_logger("run")
 
 
-def load_or_build_features(rebuild: bool = False, include_flood: bool = False) -> tuple[pd.DataFrame, list[str]]:
+def load_or_build_features(
+    rebuild: bool = False, include_flood: bool = False
+) -> tuple[pd.DataFrame, list[str]]:
     ensure_dirs()
     if CANDIDATE_FEATURES_CSV.exists() and not rebuild:
         logger.info("Loading cached features from %s.", CANDIDATE_FEATURES_CSV)
         cached = pd.read_csv(CANDIDATE_FEATURES_CSV)
-        logger.debug("Cached feature table shape=%s columns=%s", cached.shape, list(cached.columns))
-        if "candidate_source" in cached.columns and set(cached["candidate_source"].dropna()) == {"ons_lad_boundary_centroid"}:
+        logger.debug(
+            "Cached feature table shape=%s columns=%s",
+            cached.shape,
+            list(cached.columns),
+        )
+        if "candidate_source" in cached.columns and set(
+            cached["candidate_source"].dropna()
+        ) == {"ons_lad_boundary_centroid"}:
             return cached, ["Loaded cached dynamic feature table."]
-        logger.info("Cached feature table is not a dynamic national candidate table; rebuilding.")
+        logger.info(
+            "Cached feature table is not a dynamic national candidate table; rebuilding."
+        )
     logger.info("Building candidate feature table.")
     features, diagnostics = build_candidate_features(include_flood=include_flood)
     features.to_csv(CANDIDATE_FEATURES_CSV, index=False)
     logger.info("Wrote feature cache to %s.", CANDIDATE_FEATURES_CSV)
-    logger.debug("Built feature table shape=%s diagnostics=%s", features.shape, diagnostics)
+    logger.debug(
+        "Built feature table shape=%s diagnostics=%s", features.shape, diagnostics
+    )
     return features, diagnostics
 
 
@@ -71,32 +104,57 @@ def run_site_selection(
         compute_mw=compute_mw,
         optimisation_choices=optimisation_choices,
     )
-    logger.info("Planning for workload '%s' across scope '%s'.", constraints.workload, constraints.region_text)
+    logger.info(
+        "Planning for workload '%s' across scope '%s'.",
+        constraints.workload,
+        constraints.region_text,
+    )
     logger.debug("Parsed constraints: %s", constraints.to_dict())
     planning_result = run_planner(features, constraints, top_k)
     ranked = add_production_scores(features, constraints)
     ensure_dirs()
     ranked.to_csv(LATEST_RANKINGS_CSV, index=False)
     logger.info("Wrote ranked results to %s.", LATEST_RANKINGS_CSV)
-    logger.debug("Top ranked rows: %s", ranked[["region", "production_score", "overall_score"]].head(top_k).to_dict(orient="records"))
+    logger.debug(
+        "Top ranked rows: %s",
+        ranked[["region", "production_score", "overall_score"]]
+        .head(top_k)
+        .to_dict(orient="records"),
+    )
     runner = (
-        AgentRunner(model=model, timeout=agent_timeout, enabled=use_agents, enable_web=enable_web_policy)
+        AgentRunner(
+            model=model,
+            timeout=agent_timeout,
+            enabled=use_agents,
+            enable_web=enable_web_policy,
+        )
         if model
-        else AgentRunner(timeout=agent_timeout, enabled=use_agents, enable_web=enable_web_policy)
+        else AgentRunner(
+            timeout=agent_timeout, enabled=use_agents, enable_web=enable_web_policy
+        )
     )
     policy_research = None
-    if enable_web_policy and ("political_favour" in constraints.optimisation_choices or constraints.policy_constraints):
+    if enable_web_policy and (
+        "political_favour" in constraints.optimisation_choices
+        or constraints.policy_constraints
+    ):
         logger.info("Running web-enabled policy research agent.")
         policy_research = runner.run_web_research(query, planning_result.to_dict())
         planning_result.policy_research = policy_research
     logger.info("Running specialist agents.")
-    agent_summaries = run_specialist_agents(runner, query, constraints.workload, ranked, top_k)
+    agent_summaries = run_specialist_agents(
+        runner, query, constraints.workload, ranked, top_k
+    )
     logger.info("Running critic agent.")
     critic = run_critic(runner, query, constraints.workload, ranked, agent_summaries)
     logger.info("Running synthesis agent.")
-    synthesis = run_synthesis(runner, query, constraints.workload, ranked, agent_summaries, critic)
+    synthesis = run_synthesis(
+        runner, query, constraints.workload, ranked, agent_summaries, critic
+    )
     logger.info("Building Markdown report.")
-    md = build_markdown_report(query, constraints.workload, ranked, agent_summaries, critic, synthesis, top_k)
+    md = build_markdown_report(
+        query, constraints.workload, ranked, agent_summaries, critic, synthesis, top_k
+    )
     LATEST_REPORT_MD.write_text(md, encoding="utf-8")
     logger.info("Wrote Markdown report to %s.", LATEST_REPORT_MD)
     production_md = production_markdown_report(planning_result)
@@ -123,7 +181,15 @@ def run_site_selection(
         "critic": critic,
         "synthesis": synthesis,
         "terminal": production_terminal_report(planning_result),
-        "legacy_terminal": terminal_report(query, constraints.workload, ranked, agent_summaries, critic, synthesis, top_k),
+        "legacy_terminal": terminal_report(
+            query,
+            constraints.workload,
+            ranked,
+            agent_summaries,
+            critic,
+            synthesis,
+            top_k,
+        ),
         "report_path": LATEST_REPORT_MD,
         "summary_report_path": LATEST_SUMMARY_REPORT_MD,
         "rankings_path": LATEST_RANKINGS_CSV,

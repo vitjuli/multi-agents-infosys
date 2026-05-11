@@ -2,7 +2,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
+"""CAM'S COMMENTS:
+data\_paths.py 
 
+   * all hardcoded exact datasets to locations?
+"""
 ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT / "data"
 RAW_DIR = DATA_DIR / "raw"

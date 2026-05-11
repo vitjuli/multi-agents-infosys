@@ -3,7 +3,9 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from typing import Any, Literal
 
-
+"""CAM'S COMMENTS:
+* What data classes do we really want here? should check they contain all we need / want 
+"""
 RegionLevel = Literal["uk", "country", "city"]
 
 

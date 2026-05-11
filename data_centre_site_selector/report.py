@@ -7,6 +7,13 @@ import pandas as pd
 from .schemas import SiteSelectionResult
 from .scoring import workload_summary
 
+"""CAM'S COMMENTS:
+report.py
+
+    * Which uncertainties (basically disclaimers it seems) do we want?
+    * What data classes do we really want here? should check they contain all we need / want 
+
+"""
 
 DISCLAIMER = (
     "This is a hackathon prototype using public datasets and heuristic scoring. "
@@ -65,7 +72,11 @@ def agent_block(agent: dict[str, Any]) -> str:
 
 
 def dataset_availability(features: pd.DataFrame) -> str:
-    notes = features["data_quality_notes"].dropna().iloc[0] if "data_quality_notes" in features and len(features) else ""
+    notes = (
+        features["data_quality_notes"].dropna().iloc[0]
+        if "data_quality_notes" in features and len(features)
+        else ""
+    )
     lines = [
         "- ONS LAD boundaries: used if geospatial dependencies are installed; otherwise LAD hints are retained.",
         "- DESNZ REPD renewables: used for radius capacity features when coordinates are detected.",
@@ -110,7 +121,8 @@ def build_markdown_report(
             f"## Dataset Availability\n{dataset_availability(ranked)}",
             f"## Ranked Candidates\n{table_markdown(ranked, top_k)}",
             f"## Top Recommendation\n{top['region']} with overall score {top['overall_score']:.2f}/10.",
-            "## Agent Assessments\n" + "\n".join(agent_block(a) for a in agent_summaries),
+            "## Agent Assessments\n"
+            + "\n".join(agent_block(a) for a in agent_summaries),
             "## Critic Review\n" + agent_block(critic),
             "## Uncertainties\n" + "\n".join(f"- {u}" for u in uncertainties),
             "## Next Data Sources to Add\n" + "\n".join(f"- {s}" for s in next_sources),
@@ -130,7 +142,9 @@ def terminal_report(
     top_k: int,
 ) -> str:
     top = ranked.iloc[0]
-    agent_lines = "\n".join(f"- {a.get('agent')}: {a.get('summary')}" for a in agent_summaries)
+    agent_lines = "\n".join(
+        f"- {a.get('agent')}: {a.get('summary')}" for a in agent_summaries
+    )
     return f"""Query: {query}
 Workload type: {workload}
 
@@ -193,7 +207,8 @@ def production_markdown_report(result: SiteSelectionResult) -> str:
                     f"- Estimated capex: {money(rec['estimated_capex_gbp'])}; annual opex: {money(rec['estimated_annual_opex_gbp'])}",
                     f"- Summary: {rec['text_summary']}",
                     f"- Problem: {rec['problem_summary'] or 'None'}",
-                    "- Policy points:\n" + "\n".join(f"  - {point}" for point in rec["policy_points"]),
+                    "- Policy points:\n"
+                    + "\n".join(f"  - {point}" for point in rec["policy_points"]),
                     f"- Explanation: {rec['explanation']}",
                 ]
             )
@@ -201,7 +216,9 @@ def production_markdown_report(result: SiteSelectionResult) -> str:
     stages = []
     for stage in data["nested_search"]:
         regions = ", ".join(item["region"] for item in stage["top_regions"][:5])
-        stages.append(f"- {stage['label']}: {stage['candidate_count']} candidates. Top regions: {regions or 'none'}.")
+        stages.append(
+            f"- {stage['label']}: {stage['candidate_count']} candidates. Top regions: {regions or 'none'}."
+        )
     critics = "\n".join(
         f"- {critic['name']}: {'passed' if critic['passed'] else 'needs review'}; {'; '.join(critic['findings'])}"
         for critic in data["critic_results"]
@@ -209,12 +226,18 @@ def production_markdown_report(result: SiteSelectionResult) -> str:
     policy_research = data.get("policy_research")
     policy_research_block = "Not requested."
     if policy_research:
-        sources = "\n".join(f"- {source}" for source in normalise_bullets(policy_research.get("sources")))
+        sources = "\n".join(
+            f"- {source}"
+            for source in normalise_bullets(policy_research.get("sources"))
+        )
         policy_research_block = "\n".join(
             [
                 policy_research.get("summary", ""),
                 "Key points:",
-                "\n".join(f"- {point}" for point in normalise_bullets(policy_research.get("key_points"))),
+                "\n".join(
+                    f"- {point}"
+                    for point in normalise_bullets(policy_research.get("key_points"))
+                ),
                 "Sources:",
                 sources or "- None returned",
             ]
@@ -224,16 +247,28 @@ def production_markdown_report(result: SiteSelectionResult) -> str:
         [
             "# Production Data-Centre Site Selection Report",
             f"## Input Interpretation\nPrompt: {constraints['prompt']}\n\nWorkload: `{constraints['workload']}`\n\nCompute: {budget['requested_compute_mw']} MW\n\nRegion: {constraints['region_text']}\n\nBudget: {money(constraints['budget_gbp'])}",
-            "## Suggested Constraints\n" + "\n".join(f"- {item}" for item in constraints["suggested_constraints"]),
+            "## Suggested Constraints\n"
+            + "\n".join(f"- {item}" for item in constraints["suggested_constraints"]),
             "## Nested Search\n" + "\n".join(stages),
             "## Budget And Materials\n"
             + f"Recommended centres: {budget['recommended_centre_count']}\n\n"
             + f"Estimated total capex: {money(budget['estimated_total_capex_gbp'])}\n\n"
             + f"Estimated annual opex: {money(budget['estimated_annual_opex_gbp'])}\n\n"
-            + "\n".join(f"- {key}: {value}" for key, value in budget["cost_materials_summary"].items() if key != "assumptions")
+            + "\n".join(
+                f"- {key}: {value}"
+                for key, value in budget["cost_materials_summary"].items()
+                if key != "assumptions"
+            )
             + "\n\nAssumptions:\n"
-            + "\n".join(f"- {item}" for item in budget["cost_materials_summary"]["assumptions"]),
-            "## Centre Recommendations\n" + ("\n\n".join(rec_lines) if rec_lines else "No feasible recommendation generated."),
+            + "\n".join(
+                f"- {item}" for item in budget["cost_materials_summary"]["assumptions"]
+            ),
+            "## Centre Recommendations\n"
+            + (
+                "\n\n".join(rec_lines)
+                if rec_lines
+                else "No feasible recommendation generated."
+            ),
             "## Critic Review\n" + critics,
             "## Web Policy Research\n" + policy_research_block,
             "## Explanation\n" + data["explanation"],
@@ -263,5 +298,14 @@ def production_terminal_report(result: SiteSelectionResult) -> str:
         lines.append(f"  {rec['text_summary']}")
         if rec["problem_summary"]:
             lines.append(f"  Problem: {rec['problem_summary']}")
-    lines.extend(["", "Explanation:", data["explanation"], "", "Feedback:", data["feedback_prompt"]])
+    lines.extend(
+        [
+            "",
+            "Explanation:",
+            data["explanation"],
+            "",
+            "Feedback:",
+            data["feedback_prompt"],
+        ]
+    )
     return "\n".join(lines)
