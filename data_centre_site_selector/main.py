@@ -110,6 +110,15 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Skip PDF technical report generation.",
     )
+    parser.add_argument(
+        "--blueprint-mode",
+        action="store_true",
+        help=(
+            "Run the Preference-Guided Blueprint pipeline: preference interview, "
+            "blueprint approval, selective agent dispatch, and RL policy update. "
+            "Equivalent to running blueprint_main.py."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -117,6 +126,31 @@ def main() -> None:
     args = parse_args()
     configure_logging(debug=args.debug, log_file=args.log_file)
     logger.debug("CLI args parsed: %s", vars(args))
+
+    # Delegate to the blueprint pipeline when requested
+    if getattr(args, "blueprint_mode", False):
+        import subprocess, sys as _sys
+        from pathlib import Path as _Path
+        root = _Path(__file__).resolve().parents[1]
+        cmd = [_sys.executable, str(root / "blueprint_main.py")]
+        if args.query and args.query != "Find the best UK location for a data centre":
+            cmd += ["--prompt", args.query]
+        if args.budget:
+            cmd += ["--budget", args.budget]
+        if args.region:
+            cmd += ["--region", args.region]
+        if args.compute_mw:
+            cmd += ["--compute-mw", str(args.compute_mw)]
+        if args.top_k != 5:
+            cmd += ["--top-k", str(args.top_k)]
+        if args.no_agents:
+            cmd += ["--no-agents"]
+        if args.model:
+            cmd += ["--model", args.model]
+        if args.debug:
+            cmd += ["--debug"]
+        raise SystemExit(subprocess.call(cmd))
+
     budget_gbp = parse_budget_gbp(args.budget) if args.budget else None
     logger.debug("Parsed budget_gbp=%s from budget=%r", budget_gbp, args.budget)
     result = run_site_selection(
