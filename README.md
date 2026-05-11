@@ -99,34 +99,34 @@ The system executes in three sequential layers, each independently testable and 
 │  LAYER 1 — Preference Elicitation and Blueprint Construction    │
 │                                                                 │
 │  User Query                                                     │
-│    → Preference Interview Module    (heuristic + LLM refine)   │
+│    → Preference Interview Module    (heuristic + LLM refine)    │
 │    → UserPreferences object         (typed, inspectable)        │
-│    → Blueprint Optimiser            (policy-weighted + LLM)    │
-│    → ReportBlueprint object         (sections, agents, depth)  │
-│    → Human Approval Gate            (natural language loop)    │
+│    → Blueprint Optimiser            (policy-weighted + LLM)     │
+│    → ReportBlueprint object         (sections, agents, depth)   │
+│    → Human Approval Gate            (natural language loop)     │
 └────────────────────────────┬────────────────────────────────────┘
                              │ approved ReportBlueprint
 ┌────────────────────────────▼────────────────────────────────────┐
 │  LAYER 2 — Deterministic Scoring and Selective Agent Execution  │
 │                                                                 │
-│  Feature Table (ONS + DESNZ + NESO + EA + DLUHC)               │
+│  Feature Table (ONS + DESNZ + NESO + EA + DLUHC)                │
 │    → Raw Score Computation          (closed-form, deterministic)│
 │    → Workload-Weighted Ranking      (5 workload profiles)       │
-│    → Planner + Budget Allocator     (CAPEX/OPEX estimation)    │
-│    → Blueprint Task Dispatcher      (selective agent call)     │
-│    → Specialist Agents × N          (blueprint-contextualised) │
-│    → Critic Agent                   (identifies weaknesses)    │
-│    → Synthesis Agent                (final narrative)          │
+│    → Planner + Budget Allocator     (CAPEX/OPEX estimation)     │
+│    → Blueprint Task Dispatcher      (selective agent call)      │
+│    → Specialist Agents × N          (blueprint-contextualised)  │
+│    → Critic Agent                   (identifies weaknesses)     │
+│    → Synthesis Agent                (final narrative)           │
 └────────────────────────────┬────────────────────────────────────┘
                              │ agent outputs + SiteSelectionResult
 ┌────────────────────────────▼────────────────────────────────────┐
-│  LAYER 3 — Report Composition, Evaluation, and Policy Update   │
+│  LAYER 3 — Report Composition, Evaluation, and Policy Update    │
 │                                                                 │
-│  Blueprint Report Composer  → section-ordered Markdown report  │
-│  Blueprint Critic (LLM)     → BlueprintCriticResult (0–10)    │
-│  User Acceptance Gate       → acceptance or change request     │
-│  Policy Update Module       → weight nudge + normalisation     │
-│  Memory Module              → run_memory.json (persisted)      │
+│  Blueprint Report Composer  → section-ordered Markdown report   │
+│  Blueprint Critic (LLM)     → BlueprintCriticResult (0–10)      │
+│  User Acceptance Gate       → acceptance or change request      │
+│  Policy Update Module       → weight nudge + normalisation      │
+│  Memory Module              → run_memory.json (persisted)       │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
