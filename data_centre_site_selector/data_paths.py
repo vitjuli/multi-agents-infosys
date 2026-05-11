@@ -21,6 +21,8 @@ CANDIDATE_FEATURES_CSV = PROCESSED_DIR / "candidate_region_features.csv"
 LATEST_RANKINGS_CSV = PROCESSED_DIR / "latest_rankings.csv"
 LATEST_REPORT_MD = REPORTS_DIR / "latest_report.md"
 LATEST_SUMMARY_REPORT_MD = REPORTS_DIR / "latest_summary.md"
+LATEST_PDF_REPORT = REPORTS_DIR / "latest_report.pdf"
+LATEST_PDF_PLOTS_DIR = REPORTS_DIR / "report_plots"
 
 
 def ensure_dirs() -> None:

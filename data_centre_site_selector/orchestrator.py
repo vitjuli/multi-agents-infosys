@@ -4,7 +4,12 @@ import pandas as pd
 
 from .agents import AgentRunner, run_critic, run_specialist_agents, run_synthesis
 from .data_analysis import add_production_scores
-from .data_paths import CANDIDATE_FEATURES_CSV, LATEST_RANKINGS_CSV, LATEST_REPORT_MD, LATEST_SUMMARY_REPORT_MD, ensure_dirs
+from .data_paths import (
+    CANDIDATE_FEATURES_CSV, LATEST_RANKINGS_CSV,
+    LATEST_REPORT_MD, LATEST_SUMMARY_REPORT_MD,
+    LATEST_PDF_REPORT, LATEST_PDF_PLOTS_DIR,
+    ensure_dirs,
+)
 from .logging_utils import get_logger
 from .planner import run_planner
 from .preprocess import build_candidate_features
@@ -46,6 +51,7 @@ def run_site_selection(
     compute_mw: float | None = None,
     optimisation_choices: list[str] | None = None,
     enable_web_policy: bool = False,
+    generate_pdf: bool = True,
 ) -> dict:
     logger.info("Starting site-selection run.")
     logger.debug(
@@ -104,6 +110,32 @@ def run_site_selection(
     planning_result.technical_report_path = str(LATEST_REPORT_MD)
     planning_result.summary_report_path = str(LATEST_SUMMARY_REPORT_MD)
     logger.info("Wrote production summary report to %s.", LATEST_SUMMARY_REPORT_MD)
+
+    # ── PDF report pipeline ─────────────────────────────────────────────
+    pdf_report_path: str | None = None
+    if generate_pdf:
+        try:
+            from .pdf_pipeline import run_pdf_report_pipeline
+            logger.info("Generating PDF technical report via multi-agent pipeline.")
+            LATEST_PDF_PLOTS_DIR.mkdir(parents=True, exist_ok=True)
+            pdf_report_path = run_pdf_report_pipeline(
+                query=query,
+                workload=constraints.workload,
+                ranked=ranked,
+                agent_summaries=agent_summaries,
+                critic=critic,
+                synthesis=synthesis,
+                site_selection=planning_result.to_dict(),
+                top_k=top_k,
+                runner=runner,
+                output_path=str(LATEST_PDF_REPORT),
+                plot_dir=str(LATEST_PDF_PLOTS_DIR),
+            )
+            logger.info("PDF report written to %s.", pdf_report_path)
+        except Exception as exc:
+            logger.warning(
+                "PDF report generation failed (non-fatal): %s", exc, exc_info=True
+            )
     logger.debug(
         "Run result feasibility=%s needs_human_input=%s recommendations=%s budget_feasible=%s",
         planning_result.feasibility,
@@ -127,4 +159,5 @@ def run_site_selection(
         "report_path": LATEST_REPORT_MD,
         "summary_report_path": LATEST_SUMMARY_REPORT_MD,
         "rankings_path": LATEST_RANKINGS_CSV,
+        "pdf_report_path": pdf_report_path,
     }

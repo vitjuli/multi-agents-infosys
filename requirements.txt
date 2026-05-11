@@ -12,3 +12,7 @@ python-dotenv
 pydantic
 tabulate
 tqdm
+# PDF report pipeline
+matplotlib
+reportlab
+Pillow

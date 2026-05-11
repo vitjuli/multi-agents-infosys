@@ -32,6 +32,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--json", action="store_true", help="Print structured JSON output instead of the terminal summary.")
     parser.add_argument("--debug-logs", "--debug", dest="debug", action="store_true", help="Enable verbose backend debug logging to stderr.")
     parser.add_argument("--log-file", default=None, help="Write full debug logs to this file.")
+    parser.add_argument("--no-pdf", action="store_true", help="Skip PDF technical report generation.")
     return parser.parse_args()
 
 
@@ -55,6 +56,7 @@ def main() -> None:
         compute_mw=args.compute_mw,
         optimisation_choices=args.optimise,
         enable_web_policy=args.enable_web_policy,
+        generate_pdf=not args.no_pdf,
     )
     if args.interactive and result["site_selection"]["needs_human_input"]:
         logger.info("Interactive clarification requested by planner.")
@@ -75,6 +77,7 @@ def main() -> None:
                 compute_mw=args.compute_mw,
                 optimisation_choices=args.optimise,
                 enable_web_policy=args.enable_web_policy,
+                generate_pdf=not args.no_pdf,
             )
     if args.json:
         logger.debug("Printing structured JSON result.")
@@ -86,6 +89,10 @@ def main() -> None:
     print(f"Saved ranked results to {result['rankings_path']}", file=status_stream)
     print(f"Saved Markdown report to {result['report_path']}", file=status_stream)
     print(f"Saved production summary to {result['summary_report_path']}", file=status_stream)
+    if result.get("pdf_report_path"):
+        print(f"Saved PDF technical report to {result['pdf_report_path']}", file=status_stream)
+    elif not args.no_pdf:
+        print("PDF report generation was skipped or failed (see logs).", file=status_stream)
 
 
 if __name__ == "__main__":
