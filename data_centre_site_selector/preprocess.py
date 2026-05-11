@@ -1,14 +1,11 @@
 from __future__ import annotations
 
-import math
 import warnings
-from pathlib import Path
 from typing import Any
 
 import numpy as np
 import pandas as pd
 
-from .config import CANDIDATE_REGIONS
 from .data_paths import (
     BROWNFIELD_LAND_CSV,
     BROWNFIELD_SITE_CSV,
@@ -19,10 +16,10 @@ from .data_paths import (
     REPD_XLSX,
 )
 from .geo_utils import find_vector_member, has_geopandas, haversine_km, osgb_to_wgs84, parse_point_wkt
+from .logging_utils import get_logger
 
 
-def log(message: str) -> None:
-    print(f"[features] {message}", flush=True)
+logger = get_logger("features")
 
 
 def norm_col(col: Any) -> str:
@@ -47,13 +44,70 @@ def note(notes: list[str], message: str) -> None:
         notes.append(message)
 
 
-def candidate_frame() -> pd.DataFrame:
-    return pd.DataFrame([c.__dict__ for c in CANDIDATE_REGIONS]).rename(columns={"lad_name_hint": "lad_name_hint"})
+def country_from_lad_code(code: Any) -> str:
+    prefix = str(code or "")[:1].upper()
+    return {"E": "England", "S": "Scotland", "W": "Wales", "N": "Northern Ireland"}.get(prefix, "United Kingdom")
+
+
+def candidate_frame(diagnostics: list[str] | None = None) -> pd.DataFrame:
+    logger.debug("Generating candidates from LAD boundaries path=%s.", LAD_BOUNDARIES)
+    if not LAD_BOUNDARIES.exists():
+        raise FileNotFoundError(f"LAD boundaries are required for dynamic candidate generation: {LAD_BOUNDARIES}")
+    if not has_geopandas():
+        raise RuntimeError("geopandas and shapely are required for dynamic candidate generation")
+    try:
+        import geopandas as gpd
+
+        lad = gpd.read_file(LAD_BOUNDARIES)
+        logger.debug("Loaded LAD boundaries rows=%s columns=%s.", len(lad), list(lad.columns))
+        code_col = detect_column(list(lad.columns), ["LAD24CD", "lad code", "ladcd", "ctyua24cd", "local authority district code"])
+        name_col = detect_column(list(lad.columns), ["LAD24NM", "lad name", "ladnm", "ctyua24nm", "local authority district name"])
+        lat_col = detect_column(list(lad.columns), ["LAT", "latitude"])
+        lon_col = detect_column(list(lad.columns), ["LONG", "longitude", "lon"])
+        logger.debug("Detected LAD columns code=%s name=%s lat=%s lon=%s.", code_col, name_col, lat_col, lon_col)
+        if name_col is None:
+            raise ValueError("LAD name column not detected")
+        if lat_col and lon_col:
+            lat = pd.to_numeric(lad[lat_col], errors="coerce")
+            lon = pd.to_numeric(lad[lon_col], errors="coerce")
+        else:
+            points = lad.to_crs("EPSG:27700").geometry.representative_point()
+            points = gpd.GeoSeries(points, crs="EPSG:27700").to_crs("EPSG:4326")
+            lat = points.y
+            lon = points.x
+        out = pd.DataFrame(
+            {
+                "region": lad[name_col].astype(str),
+                "lat": lat,
+                "lon": lon,
+                "alt_m": np.nan,
+                "country": lad[code_col].map(country_from_lad_code) if code_col else "United Kingdom",
+                "workload_hint": "dynamic local-authority candidate generated from ONS LAD boundary centroid",
+                "lad_name_hint": lad[name_col].astype(str),
+                "aliases": lad[name_col].astype(str).str.lower(),
+                "lad_code": lad[code_col].astype(str) if code_col else np.nan,
+                "lad_name": lad[name_col].astype(str),
+                "candidate_source": "ons_lad_boundary_centroid",
+            }
+        )
+        out = out.dropna(subset=["lat", "lon"]).reset_index(drop=True)
+        if diagnostics is not None:
+            diagnostics.append(f"Generated {len(out)} dynamic candidates from ONS LAD boundary centroids.")
+        logger.debug("Generated candidate frame shape=%s country_counts=%s.", out.shape, out["country"].value_counts(dropna=False).to_dict())
+        return out
+    except Exception as exc:
+        raise RuntimeError(f"Dynamic LAD candidate generation failed: {exc}") from exc
 
 
 def add_lad_features(df: pd.DataFrame, diagnostics: list[str]) -> pd.DataFrame:
-    df["lad_code"] = np.nan
-    df["lad_name"] = df["lad_name_hint"]
+    if "lad_code" not in df:
+        df["lad_code"] = np.nan
+    if "lad_name" not in df:
+        df["lad_name"] = df["lad_name_hint"]
+    if df["lad_code"].notna().any() and df.get("candidate_source", pd.Series(index=df.index)).eq("ons_lad_boundary_centroid").any():
+        diagnostics.append("Using LAD codes and names from generated boundary-centroid candidates.")
+        logger.debug("Skipped LAD spatial join because candidates already include LAD codes.")
+        return df
     if not LAD_BOUNDARIES.exists():
         diagnostics.append("LAD boundaries missing; used candidate LAD name hints only.")
         return df
@@ -74,8 +128,10 @@ def add_lad_features(df: pd.DataFrame, diagnostics: list[str]) -> pd.DataFrame:
         if name_col:
             df["lad_name"] = joined[name_col].fillna(df["lad_name_hint"]).values
         diagnostics.append("Computed LAD joins using ONS LAD boundaries.")
+        logger.debug("Computed LAD spatial join; matched_codes=%s/%s.", df["lad_code"].notna().sum(), len(df))
     except Exception as exc:
         diagnostics.append(f"LAD spatial join failed: {exc}. Used candidate LAD name hints only.")
+        logger.exception("LAD spatial join failed.")
     return df
 
 
@@ -126,8 +182,10 @@ def add_population_features(df: pd.DataFrame, diagnostics: list[str]) -> pd.Data
                 axis=1,
             )
         diagnostics.append(f"Joined population estimates from sheet {best}; Scotland may be missing in England/Wales workbook.")
+        logger.debug("Joined population estimates from sheet=%s populated=%s/%s.", best, df["population_lad"].notna().sum(), len(df))
     except Exception as exc:
         diagnostics.append(f"Population processing failed: {exc}.")
+        logger.exception("Population processing failed.")
     return df
 
 
@@ -190,8 +248,15 @@ def add_renewable_features(df: pd.DataFrame, diagnostics: list[str]) -> pd.DataF
             df.loc[idx, "operational_renewable_capacity_50km_mw"] = repd.loc[within50 & operational, "capacity_mw"].sum()
             df.loc[idx, "pipeline_renewable_capacity_50km_mw"] = repd.loc[within50 & pipeline, "capacity_mw"].sum()
         diagnostics.append(f"Computed renewable radius features from DESNZ REPD sheet {sheet}.")
+        logger.debug(
+            "Renewable features computed from sheet=%s projects_with_coords=%s max_capacity_50km=%s.",
+            sheet,
+            len(repd),
+            df["renewable_capacity_50km_mw"].max(),
+        )
     except Exception as exc:
         diagnostics.append(f"Renewable processing failed: {exc}.")
+        logger.exception("Renewable processing failed.")
     return df
 
 
@@ -237,6 +302,7 @@ def add_brownfield_features(df: pd.DataFrame, diagnostics: list[str]) -> pd.Data
         df.loc[idx, "brownfield_site_count_50km"] = int(within50.sum())
         df.loc[idx, "brownfield_hectares_50km"] = sites.loc[within50, "hectares"].sum()
     diagnostics.append("Computed brownfield radius features from available point columns; England-only caveat applies.")
+    logger.debug("Brownfield features computed sites=%s max_hectares_50km=%s.", len(sites), df["brownfield_hectares_50km"].max())
     return df
 
 
@@ -266,14 +332,16 @@ def add_gsp_features(df: pd.DataFrame, diagnostics: list[str]) -> pd.DataFrame:
         centroids = gsp27700.geometry.centroid
         df["nearest_gsp_distance_km"] = [centroids.distance(point).min() / 1000 for point in pts27700.geometry]
         diagnostics.append(f"Computed GSP joins from {member}.")
+        logger.debug("GSP features computed from member=%s matched_regions=%s/%s.", member, df["gsp_region"].notna().sum(), len(df))
     except Exception as exc:
         diagnostics.append(f"GSP processing failed: {exc}.")
+        logger.exception("GSP processing failed.")
     return df
 
 
 def add_flood_features(df: pd.DataFrame, diagnostics: list[str], load_flood: bool = False) -> pd.DataFrame:
-    df["flood_zone_2_intersects"] = np.nan
-    df["flood_zone_3_intersects"] = np.nan
+    df["flood_zone_2_intersects"] = pd.Series(pd.NA, index=df.index, dtype="boolean")
+    df["flood_zone_3_intersects"] = pd.Series(pd.NA, index=df.index, dtype="boolean")
     df["flood_zone_overlap_warning"] = "not computed"
     if not FLOOD_ZONES_ZIP.exists():
         diagnostics.append("EA flood zones ZIP missing.")
@@ -305,9 +373,11 @@ def add_flood_features(df: pd.DataFrame, diagnostics: list[str], load_flood: boo
             df.loc[idx, "flood_zone_3_intersects"] = bool(text.str.contains("3").any()) if zone_col else False
             df.loc[idx, "flood_zone_overlap_warning"] = "computed within 15km candidate buffer"
         diagnostics.append("Computed flood-zone intersections with candidate buffers.")
+        logger.debug("Flood features computed candidates=%s.", len(df))
     except Exception as exc:
         diagnostics.append(f"Flood processing failed: {exc}.")
         df["flood_zone_overlap_warning"] = f"flood processing failed: {exc}"
+        logger.exception("Flood processing failed.")
     return df
 
 
@@ -315,20 +385,21 @@ def build_candidate_features(include_flood: bool = False) -> tuple[pd.DataFrame,
     diagnostics: list[str] = []
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        log("Creating fixed candidate region table.")
-        df = candidate_frame()
-        log("Joining candidates to ONS LAD boundaries.")
+        logger.info("Creating dynamic candidate region table.")
+        df = candidate_frame(diagnostics)
+        logger.info("Joining candidates to ONS LAD boundaries.")
         df = add_lad_features(df, diagnostics)
-        log("Joining ONS population estimates.")
+        logger.info("Joining ONS population estimates.")
         df = add_population_features(df, diagnostics)
-        log("Computing renewable energy radius features from DESNZ REPD.")
+        logger.info("Computing renewable energy radius features from DESNZ REPD.")
         df = add_renewable_features(df, diagnostics)
-        log("Joining NESO GSP regions and nearest GSP distances.")
+        logger.info("Joining NESO GSP regions and nearest GSP distances.")
         df = add_gsp_features(df, diagnostics)
-        log("Checking EA flood-zone availability.")
+        logger.info("Checking EA flood-zone availability.")
         df = add_flood_features(df, diagnostics, load_flood=include_flood)
-        log("Computing brownfield land/site radius features.")
+        logger.info("Computing brownfield land/site radius features.")
         df = add_brownfield_features(df, diagnostics)
-        log("Feature build complete.")
+        logger.info("Feature build complete.")
     df["data_quality_notes"] = " | ".join(diagnostics)
+    logger.debug("Feature build diagnostics=%s.", diagnostics)
     return df, diagnostics

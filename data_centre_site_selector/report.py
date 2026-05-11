@@ -4,6 +4,7 @@ from typing import Any
 
 import pandas as pd
 
+from .schemas import SiteSelectionResult
 from .scoring import workload_summary
 
 
@@ -165,3 +166,102 @@ Suggested next datasets to add:
 Prototype disclaimer:
 {DISCLAIMER}
 """
+
+
+def money(value: float | None) -> str:
+    if value is None:
+        return "unspecified"
+    if abs(value) >= 1_000_000_000:
+        return f"GBP {value / 1_000_000_000:.2f}bn"
+    if abs(value) >= 1_000_000:
+        return f"GBP {value / 1_000_000:.1f}m"
+    return f"GBP {value:,.0f}"
+
+
+def production_markdown_report(result: SiteSelectionResult) -> str:
+    data = result.to_dict()
+    constraints = data["constraints"]
+    rec_lines = []
+    for rec in data["recommendations"]:
+        rec_lines.append(
+            "\n".join(
+                [
+                    f"### {rec['location']}",
+                    f"- Coordinates: {rec['latitude']}, {rec['longitude']}; altitude {rec['altitude_m']} m",
+                    f"- Priority: {rec['priority_flag']}; feasible: {rec['feasibility']}",
+                    f"- Compute allocation: {rec['compute_mw']} MW",
+                    f"- Estimated capex: {money(rec['estimated_capex_gbp'])}; annual opex: {money(rec['estimated_annual_opex_gbp'])}",
+                    f"- Summary: {rec['text_summary']}",
+                    f"- Problem: {rec['problem_summary'] or 'None'}",
+                    "- Policy points:\n" + "\n".join(f"  - {point}" for point in rec["policy_points"]),
+                    f"- Explanation: {rec['explanation']}",
+                ]
+            )
+        )
+    stages = []
+    for stage in data["nested_search"]:
+        regions = ", ".join(item["region"] for item in stage["top_regions"][:5])
+        stages.append(f"- {stage['label']}: {stage['candidate_count']} candidates. Top regions: {regions or 'none'}.")
+    critics = "\n".join(
+        f"- {critic['name']}: {'passed' if critic['passed'] else 'needs review'}; {'; '.join(critic['findings'])}"
+        for critic in data["critic_results"]
+    )
+    policy_research = data.get("policy_research")
+    policy_research_block = "Not requested."
+    if policy_research:
+        sources = "\n".join(f"- {source}" for source in normalise_bullets(policy_research.get("sources")))
+        policy_research_block = "\n".join(
+            [
+                policy_research.get("summary", ""),
+                "Key points:",
+                "\n".join(f"- {point}" for point in normalise_bullets(policy_research.get("key_points"))),
+                "Sources:",
+                sources or "- None returned",
+            ]
+        )
+    budget = data["budget_plan"]
+    return "\n\n".join(
+        [
+            "# Production Data-Centre Site Selection Report",
+            f"## Input Interpretation\nPrompt: {constraints['prompt']}\n\nWorkload: `{constraints['workload']}`\n\nCompute: {budget['requested_compute_mw']} MW\n\nRegion: {constraints['region_text']}\n\nBudget: {money(constraints['budget_gbp'])}",
+            "## Suggested Constraints\n" + "\n".join(f"- {item}" for item in constraints["suggested_constraints"]),
+            "## Nested Search\n" + "\n".join(stages),
+            "## Budget And Materials\n"
+            + f"Recommended centres: {budget['recommended_centre_count']}\n\n"
+            + f"Estimated total capex: {money(budget['estimated_total_capex_gbp'])}\n\n"
+            + f"Estimated annual opex: {money(budget['estimated_annual_opex_gbp'])}\n\n"
+            + "\n".join(f"- {key}: {value}" for key, value in budget["cost_materials_summary"].items() if key != "assumptions")
+            + "\n\nAssumptions:\n"
+            + "\n".join(f"- {item}" for item in budget["cost_materials_summary"]["assumptions"]),
+            "## Centre Recommendations\n" + ("\n\n".join(rec_lines) if rec_lines else "No feasible recommendation generated."),
+            "## Critic Review\n" + critics,
+            "## Web Policy Research\n" + policy_research_block,
+            "## Explanation\n" + data["explanation"],
+            "## Feedback Request\n" + data["feedback_prompt"],
+            "## Important Caveats\n" + DISCLAIMER,
+        ]
+    )
+
+
+def production_terminal_report(result: SiteSelectionResult) -> str:
+    data = result.to_dict()
+    lines = [
+        f"Feasible: {data['feasibility']}",
+        f"Needs human input: {data['needs_human_input']}",
+        f"Input scope: {data['constraints']['region_text']} | workload: {data['constraints']['workload']} | compute: {data['budget_plan']['requested_compute_mw']} MW",
+        f"Budget: {money(data['constraints']['budget_gbp'])} | estimated capex: {money(data['budget_plan']['estimated_total_capex_gbp'])}",
+        "",
+        "Recommended centres:",
+    ]
+    if not data["recommendations"]:
+        lines.append("- None")
+    for rec in data["recommendations"]:
+        lines.append(
+            f"- {rec['location']} ({rec['latitude']}, {rec['longitude']}, {rec['altitude_m']} m): "
+            f"{rec['priority_flag']}, feasible={rec['feasibility']}, capex={money(rec['estimated_capex_gbp'])}"
+        )
+        lines.append(f"  {rec['text_summary']}")
+        if rec["problem_summary"]:
+            lines.append(f"  Problem: {rec['problem_summary']}")
+    lines.extend(["", "Explanation:", data["explanation"], "", "Feedback:", data["feedback_prompt"]])
+    return "\n".join(lines)

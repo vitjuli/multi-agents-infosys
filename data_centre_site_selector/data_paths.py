@@ -20,6 +20,7 @@ BROWNFIELD_SITE_CSV = RAW_DIR / "planning_brownfield_site.csv"
 CANDIDATE_FEATURES_CSV = PROCESSED_DIR / "candidate_region_features.csv"
 LATEST_RANKINGS_CSV = PROCESSED_DIR / "latest_rankings.csv"
 LATEST_REPORT_MD = REPORTS_DIR / "latest_report.md"
+LATEST_SUMMARY_REPORT_MD = REPORTS_DIR / "latest_summary.md"
 
 
 def ensure_dirs() -> None:
