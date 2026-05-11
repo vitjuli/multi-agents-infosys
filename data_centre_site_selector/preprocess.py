@@ -21,6 +21,10 @@ from .data_paths import (
 from .geo_utils import find_vector_member, has_geopandas, haversine_km, osgb_to_wgs84, parse_point_wkt
 
 
+def log(message: str) -> None:
+    print(f"[features] {message}", flush=True)
+
+
 def norm_col(col: Any) -> str:
     return "".join(ch.lower() for ch in str(col) if ch.isalnum())
 
@@ -311,12 +315,20 @@ def build_candidate_features(include_flood: bool = False) -> tuple[pd.DataFrame,
     diagnostics: list[str] = []
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
+        log("Creating fixed candidate region table.")
         df = candidate_frame()
+        log("Joining candidates to ONS LAD boundaries.")
         df = add_lad_features(df, diagnostics)
+        log("Joining ONS population estimates.")
         df = add_population_features(df, diagnostics)
+        log("Computing renewable energy radius features from DESNZ REPD.")
         df = add_renewable_features(df, diagnostics)
+        log("Joining NESO GSP regions and nearest GSP distances.")
         df = add_gsp_features(df, diagnostics)
+        log("Checking EA flood-zone availability.")
         df = add_flood_features(df, diagnostics, load_flood=include_flood)
+        log("Computing brownfield land/site radius features.")
         df = add_brownfield_features(df, diagnostics)
+        log("Feature build complete.")
     df["data_quality_notes"] = " | ".join(diagnostics)
     return df, diagnostics

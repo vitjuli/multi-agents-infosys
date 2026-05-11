@@ -7,7 +7,7 @@ from typing import Any
 
 from openai import OpenAI
 
-from .config import DEFAULT_MODEL
+from .config import DEFAULT_MODEL, load_environment
 
 
 AGENT_NAMES = [
@@ -18,6 +18,10 @@ AGENT_NAMES = [
     "ResilienceAgent",
     "LandPlanningAgent",
 ]
+
+
+def log(message: str) -> None:
+    print(f"[agents] {message}", flush=True)
 
 
 def fallback(agent: str, reason: str) -> dict[str, Any]:
@@ -41,6 +45,14 @@ def parse_agent_json(text: str, agent: str) -> dict[str, Any]:
             parsed.setdefault("key_points", [])
             parsed.setdefault("risks", [])
             parsed.setdefault("confidence", "medium")
+            if isinstance(parsed.get("key_points"), dict):
+                parsed["key_points"] = [f"{key}: {value}" for key, value in parsed["key_points"].items()]
+            elif isinstance(parsed.get("key_points"), str):
+                parsed["key_points"] = [parsed["key_points"]]
+            if isinstance(parsed.get("risks"), dict):
+                parsed["risks"] = [f"{key}: {value}" for key, value in parsed["risks"].items()]
+            elif isinstance(parsed.get("risks"), str):
+                parsed["risks"] = [parsed["risks"]]
             return parsed
     except Exception:
         pass
@@ -48,7 +60,8 @@ def parse_agent_json(text: str, agent: str) -> dict[str, Any]:
 
 
 class AgentRunner:
-    def __init__(self, model: str = DEFAULT_MODEL, max_retries: int = 1, timeout: float = 8.0, enabled: bool | None = None) -> None:
+    def __init__(self, model: str = DEFAULT_MODEL, max_retries: int = 1, timeout: float = 45.0, enabled: bool | None = None) -> None:
+        load_environment()
         self.model = model
         self.max_retries = max_retries
         self.disabled_reason = "OPENAI_API_KEY is not set"
@@ -61,6 +74,7 @@ class AgentRunner:
 
     def run(self, agent: str, query: str, workload: str, payload: dict[str, Any]) -> dict[str, Any]:
         if not self.enabled or self.client is None:
+            log(f"{agent}: using deterministic fallback ({self.disabled_reason}).")
             return fallback(agent, self.disabled_reason)
         system = (
             f"You are {agent}, a specialist data-centre site-selection analyst. "
@@ -74,6 +88,7 @@ class AgentRunner:
             "features": payload,
         }
         last_error = None
+        log(f"{agent}: calling OpenAI model '{self.model}'.")
         for attempt in range(self.max_retries + 1):
             try:
                 response = self.client.chat.completions.create(
@@ -85,10 +100,13 @@ class AgentRunner:
                     ],
                 )
                 text = response.choices[0].message.content or ""
+                log(f"{agent}: received model response.")
                 return parse_agent_json(text, agent)
             except Exception as exc:
                 last_error = exc
+                log(f"{agent}: model call attempt {attempt + 1} failed: {exc}.")
                 time.sleep(0.5 * (attempt + 1))
+        log(f"{agent}: using deterministic fallback after model failure.")
         return fallback(agent, f"model call failed: {last_error}")
 
 

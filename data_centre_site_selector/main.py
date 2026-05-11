@@ -14,6 +14,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--rebuild-features", action="store_true", help="Rebuild cached feature table.")
     parser.add_argument("--include-flood", action="store_true", help="Attempt to load the large EA flood-zone dataset during feature build.")
     parser.add_argument("--model", default=None, help="OpenAI model override. Defaults to OPENAI_MODEL or gpt-4o-mini.")
+    parser.add_argument("--agent-timeout", type=float, default=45.0, help="OpenAI agent request timeout in seconds.")
     parser.add_argument("--no-agents", action="store_true", help="Skip OpenAI calls and use deterministic fallback agent messages.")
     return parser.parse_args()
 
@@ -28,6 +29,7 @@ def main() -> None:
         include_flood=args.include_flood,
         model=args.model,
         use_agents=not args.no_agents,
+        agent_timeout=args.agent_timeout,
     )
     print(result["terminal"])
     print(f"Saved ranked results to {result['rankings_path']}")

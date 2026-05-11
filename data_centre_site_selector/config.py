@@ -2,7 +2,20 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import os
+from pathlib import Path
 
+
+def load_environment() -> None:
+    """Load repo-local .env values when python-dotenv is available."""
+    try:
+        from dotenv import load_dotenv
+    except ImportError:
+        return
+    root = Path(__file__).resolve().parents[1]
+    load_dotenv(root / ".env")
+
+
+load_environment()
 
 DEFAULT_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 

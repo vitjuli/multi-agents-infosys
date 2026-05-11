@@ -13,6 +13,10 @@ from data_centre_site_selector.data_paths import RAW_DIR
 from data_centre_site_selector.geo_utils import find_vector_member, has_geopandas
 
 
+def log(message: str) -> None:
+    print(f"[inspect] {message}", flush=True)
+
+
 def size_mb(path: Path) -> str:
     return f"{path.stat().st_size / (1024 * 1024):.1f} MB" if path.exists() else "missing"
 
@@ -83,6 +87,7 @@ def main() -> None:
         print(f"No files found in {RAW_DIR}")
         return
     for path in files:
+        log(f"Inspecting {path.name}.")
         print("\n" + "=" * 80)
         print(f"{path.name}")
         print(f"Exists: {path.exists()}")
@@ -99,6 +104,7 @@ def main() -> None:
             inspect_zip(path)
         else:
             print("No specialised inspector for this format.")
+        log(f"Finished {path.name}.")
 
 
 if __name__ == "__main__":

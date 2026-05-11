@@ -37,9 +37,23 @@ def table_markdown(df: pd.DataFrame, top_k: int | None = None) -> str:
     return view.to_markdown(index=False)
 
 
+def normalise_bullets(value: Any) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [value] if value.strip() else []
+    if isinstance(value, dict):
+        return [f"{key}: {item}" for key, item in value.items()]
+    if isinstance(value, (list, tuple, set)):
+        return [str(item) for item in value if str(item).strip()]
+    return [str(value)]
+
+
 def agent_block(agent: dict[str, Any]) -> str:
-    points = "\n".join(f"- {p}" for p in agent.get("key_points", [])[:5]) or "- None provided"
-    risks = "\n".join(f"- {r}" for r in agent.get("risks", [])[:5]) or "- None provided"
+    key_points = normalise_bullets(agent.get("key_points"))[:5]
+    risk_items = normalise_bullets(agent.get("risks"))[:5]
+    points = "\n".join(f"- {p}" for p in key_points) or "- None provided"
+    risks = "\n".join(f"- {r}" for r in risk_items) or "- None provided"
     return (
         f"### {agent.get('agent', 'Agent')}\n\n"
         f"{agent.get('summary', '')}\n\n"
