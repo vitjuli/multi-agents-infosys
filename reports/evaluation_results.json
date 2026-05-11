@@ -1,0 +1,671 @@
+[
+  {
+    "module": "benchmark_suite",
+    "pass": false,
+    "cases_passed": 1,
+    "cases_total": 5,
+    "pass_rate": 0.2,
+    "results": [
+      {
+        "case": "Scotland AI Training \u2014 CO2",
+        "pass": false,
+        "checks_passed": 3,
+        "checks_total": 4,
+        "checks": [
+          {
+            "check": "workload_inferred",
+            "pass": true,
+            "expected": "ai_training",
+            "got": "ai_training"
+          },
+          {
+            "check": "region_scope",
+            "pass": true,
+            "expected": "country",
+            "got": "country"
+          },
+          {
+            "check": "min_recommendations",
+            "pass": false,
+            "expected_min": 1,
+            "got": 0
+          },
+          {
+            "check": "score_range_valid",
+            "pass": true,
+            "cols_checked": [
+              "overall_score",
+              "production_score"
+            ]
+          }
+        ],
+        "elapsed_s": 0.15,
+        "top_recommendation": null,
+        "workload_inferred": "ai_training"
+      },
+      {
+        "case": "London Financial \u2014 Low Latency",
+        "pass": false,
+        "checks_passed": 3,
+        "checks_total": 5,
+        "checks": [
+          {
+            "check": "workload_inferred",
+            "pass": true,
+            "expected": "financial_low_latency",
+            "got": "financial_low_latency"
+          },
+          {
+            "check": "region_scope",
+            "pass": false,
+            "expected": "city",
+            "got": "uk"
+          },
+          {
+            "check": "min_recommendations",
+            "pass": true,
+            "expected_min": 1,
+            "got": 1
+          },
+          {
+            "check": "top_recommendation_country",
+            "pass": false,
+            "expected": "England",
+            "got": "United Kingdom",
+            "top_location": "Leeds / Yorkshire"
+          },
+          {
+            "check": "score_range_valid",
+            "pass": true,
+            "cols_checked": [
+              "overall_score",
+              "production_score"
+            ]
+          }
+        ],
+        "elapsed_s": 0.17,
+        "top_recommendation": "Leeds / Yorkshire",
+        "workload_inferred": "financial_low_latency"
+      },
+      {
+        "case": "Wales Backup \u2014 Resilience",
+        "pass": false,
+        "checks_passed": 3,
+        "checks_total": 4,
+        "checks": [
+          {
+            "check": "workload_inferred",
+            "pass": true,
+            "expected": "backup_disaster_recovery",
+            "got": "backup_disaster_recovery"
+          },
+          {
+            "check": "region_scope",
+            "pass": true,
+            "expected": "country",
+            "got": "country"
+          },
+          {
+            "check": "min_recommendations",
+            "pass": false,
+            "expected_min": 1,
+            "got": 0
+          },
+          {
+            "check": "score_range_valid",
+            "pass": true,
+            "cols_checked": [
+              "overall_score",
+              "production_score"
+            ]
+          }
+        ],
+        "elapsed_s": 0.13,
+        "top_recommendation": null,
+        "workload_inferred": "backup_disaster_recovery"
+      },
+      {
+        "case": "UK-wide Energy Optimised",
+        "pass": true,
+        "checks_passed": 4,
+        "checks_total": 4,
+        "checks": [
+          {
+            "check": "workload_inferred",
+            "pass": true,
+            "expected": "ai_training",
+            "got": "ai_training"
+          },
+          {
+            "check": "region_scope",
+            "pass": true,
+            "expected": "uk",
+            "got": "uk"
+          },
+          {
+            "check": "min_recommendations",
+            "pass": true,
+            "expected_min": 1,
+            "got": 3
+          },
+          {
+            "check": "score_range_valid",
+            "pass": true,
+            "cols_checked": [
+              "overall_score",
+              "production_score"
+            ]
+          }
+        ],
+        "elapsed_s": 0.13,
+        "top_recommendation": "Leeds / Yorkshire",
+        "workload_inferred": "ai_training"
+      },
+      {
+        "case": "England Enterprise Colocation",
+        "pass": false,
+        "checks_passed": 3,
+        "checks_total": 4,
+        "checks": [
+          {
+            "check": "workload_inferred",
+            "pass": true,
+            "expected": "enterprise_colocation",
+            "got": "enterprise_colocation"
+          },
+          {
+            "check": "region_scope",
+            "pass": true,
+            "expected": "country",
+            "got": "country"
+          },
+          {
+            "check": "min_recommendations",
+            "pass": false,
+            "expected_min": 1,
+            "got": 0
+          },
+          {
+            "check": "score_range_valid",
+            "pass": true,
+            "cols_checked": [
+              "overall_score",
+              "production_score"
+            ]
+          }
+        ],
+        "elapsed_s": 0.13,
+        "top_recommendation": null,
+        "workload_inferred": "enterprise_colocation"
+      }
+    ]
+  },
+  {
+    "module": "score_stability",
+    "check": "score_stability",
+    "pass": true,
+    "n_runs": 2,
+    "max_deviation": 0.0,
+    "mismatches": [],
+    "detail": "Scores identical across 2 runs"
+  },
+  {
+    "module": "workload_ordering",
+    "check": "workload_ordering",
+    "sub_checks": [
+      {
+        "check": "ai_training_energy_ordering",
+        "pass": true,
+        "top_energy": 10.0,
+        "bottom_energy": 6.56,
+        "detail": "Top site energy=10.00, bottom=6.56"
+      },
+      {
+        "check": "financial_latency_ordering",
+        "pass": true,
+        "top_hub_km": 0.0,
+        "bottom_hub_km": 261.3,
+        "detail": "Top site hub_dist=0.0 km, bottom=261.3 km"
+      },
+      {
+        "check": "score_range_validity",
+        "pass": true,
+        "out_of_range_cols": {},
+        "detail": "All scores in [0, 10]"
+      }
+    ],
+    "pass": true,
+    "passed": 3,
+    "total": 3
+  },
+  {
+    "module": "ground_truth",
+    "pass": true,
+    "precision_at_20": {
+      "precision_at_k": 0.2,
+      "k": 20,
+      "hits": [
+        "Leeds / Yorkshire",
+        "Manchester",
+        "Birmingham / West Midlands",
+        "Slough / West London"
+      ],
+      "hit_count": 4,
+      "total_known_lads": 28,
+      "pass": true
+    },
+    "cluster_coverage": {
+      "clusters_found": {
+        "London West / M4 Corridor": [
+          "Slough"
+        ],
+        "Manchester / North West": [
+          "Manchester"
+        ],
+        "West Midlands": [
+          "Birmingham"
+        ],
+        "Yorkshire": [
+          "Leeds"
+        ]
+      },
+      "clusters_missing": [
+        "London Core (Docklands/City)",
+        "Thames Valley",
+        "Scotland Central Belt"
+      ],
+      "cluster_coverage": 0.571,
+      "total_clusters": 7,
+      "pass": true
+    }
+  },
+  {
+    "module": "agent_coherence",
+    "pass": true,
+    "agents_passed": 6,
+    "agents_total": 6,
+    "pass_rate": 1.0,
+    "fallback_count": 0,
+    "results": [
+      {
+        "agent": "EnergyAgent",
+        "is_fallback": false,
+        "checks": [
+          {
+            "check": "keyword_relevance",
+            "pass": true,
+            "coverage": 0.71,
+            "found": [
+              "renewable",
+              "capacity",
+              "energy",
+              "mw",
+              "operational"
+            ],
+            "expected": [
+              "renewable",
+              "capacity",
+              "energy",
+              "grid",
+              "mw",
+              "gsp",
+              "operational"
+            ],
+            "detail": "Found 5/7 expected keywords"
+          },
+          {
+            "check": "score_alignment",
+            "pass": false,
+            "agent_sentiment": "strongly_negative",
+            "pos_words": 0,
+            "neg_words": 1,
+            "top_score": 6.79,
+            "contradiction": true,
+            "detail": "Sentiment=strongly_negative (pos=0, neg=1), score=6.8"
+          },
+          {
+            "check": "confidence_calibration",
+            "pass": true,
+            "confidence_claimed": "the computed scores are based on available data and methodologies, but the absence of flood zone computations and potential data gaps (especially regarding scotland) may affect the overall reliability of the analysis.",
+            "has_placeholder_language": false,
+            "overconfident": false,
+            "detail": "Agent claims 'the computed scores are based on available data and methodologies, but the absence of flood zone computations and potential data gaps (especially regarding scotland) may affect the overall reliability of the analysis.' confidence without placeholder language"
+          },
+          {
+            "check": "region_mention",
+            "pass": true,
+            "mentioned": [
+              "Leeds / Yorkshire",
+              "Birmingham / West Midlands",
+              "Manchester"
+            ],
+            "top_regions": [
+              "Leeds / Yorkshire",
+              "Birmingham / West Midlands",
+              "Manchester"
+            ],
+            "is_fallback": false,
+            "detail": "Mentions 3/3 top regions"
+          }
+        ],
+        "checks_passed": 3,
+        "checks_total": 4,
+        "overall_pass": true,
+        "pass_rate": 0.75
+      },
+      {
+        "agent": "WaterAgent",
+        "is_fallback": false,
+        "checks": [
+          {
+            "check": "keyword_relevance",
+            "pass": true,
+            "coverage": 0.8,
+            "found": [
+              "water",
+              "score",
+              "data",
+              "resources"
+            ],
+            "expected": [
+              "water",
+              "score",
+              "population",
+              "data",
+              "resources"
+            ],
+            "detail": "Found 4/5 expected keywords"
+          },
+          {
+            "check": "score_alignment",
+            "pass": false,
+            "agent_sentiment": "strongly_negative",
+            "pos_words": 0,
+            "neg_words": 1,
+            "top_score": 6.79,
+            "contradiction": true,
+            "detail": "Sentiment=strongly_negative (pos=0, neg=1), score=6.8"
+          },
+          {
+            "check": "confidence_calibration",
+            "pass": true,
+            "confidence_claimed": "moderate - the computed scores are based on available data, but missing flood and land data in certain regions may affect the reliability of the results.",
+            "has_placeholder_language": false,
+            "overconfident": false,
+            "detail": "Agent claims 'moderate - the computed scores are based on available data, but missing flood and land data in certain regions may affect the reliability of the results.' confidence without placeholder language"
+          },
+          {
+            "check": "region_mention",
+            "pass": true,
+            "mentioned": [
+              "Leeds / Yorkshire",
+              "Birmingham / West Midlands",
+              "Manchester"
+            ],
+            "top_regions": [
+              "Leeds / Yorkshire",
+              "Birmingham / West Midlands",
+              "Manchester"
+            ],
+            "is_fallback": false,
+            "detail": "Mentions 3/3 top regions"
+          }
+        ],
+        "checks_passed": 3,
+        "checks_total": 4,
+        "overall_pass": true,
+        "pass_rate": 0.75
+      },
+      {
+        "agent": "ClimateCoolingAgent",
+        "is_fallback": false,
+        "checks": [
+          {
+            "check": "keyword_relevance",
+            "pass": true,
+            "coverage": 0.6,
+            "found": [
+              "climate",
+              "score",
+              "conditions"
+            ],
+            "expected": [
+              "climate",
+              "score",
+              "cooling",
+              "temperature",
+              "conditions"
+            ],
+            "detail": "Found 3/5 expected keywords"
+          },
+          {
+            "check": "score_alignment",
+            "pass": true,
+            "agent_sentiment": "mixed/neutral",
+            "pos_words": 1,
+            "neg_words": 1,
+            "top_score": 6.79,
+            "contradiction": false,
+            "detail": "Sentiment=mixed/neutral (pos=1, neg=1), score=6.8"
+          },
+          {
+            "check": "confidence_calibration",
+            "pass": true,
+            "confidence_claimed": "the computed scores are based on available data and methodologies, but the presence of uncomputed flood data and potential missing data for scotland introduces some uncertainty.",
+            "has_placeholder_language": false,
+            "overconfident": false,
+            "detail": "Agent claims 'the computed scores are based on available data and methodologies, but the presence of uncomputed flood data and potential missing data for scotland introduces some uncertainty.' confidence without placeholder language"
+          },
+          {
+            "check": "region_mention",
+            "pass": true,
+            "mentioned": [
+              "Leeds / Yorkshire",
+              "Birmingham / West Midlands"
+            ],
+            "top_regions": [
+              "Leeds / Yorkshire",
+              "Birmingham / West Midlands",
+              "Manchester"
+            ],
+            "is_fallback": false,
+            "detail": "Mentions 2/3 top regions"
+          }
+        ],
+        "checks_passed": 4,
+        "checks_total": 4,
+        "overall_pass": true,
+        "pass_rate": 1.0
+      },
+      {
+        "agent": "LatencyAgent",
+        "is_fallback": false,
+        "checks": [
+          {
+            "check": "keyword_relevance",
+            "pass": true,
+            "coverage": 0.8,
+            "found": [
+              "latency",
+              "hub",
+              "km",
+              "proximity"
+            ],
+            "expected": [
+              "latency",
+              "distance",
+              "hub",
+              "km",
+              "proximity"
+            ],
+            "detail": "Found 4/5 expected keywords"
+          },
+          {
+            "check": "score_alignment",
+            "pass": false,
+            "agent_sentiment": "strongly_negative",
+            "pos_words": 0,
+            "neg_words": 1,
+            "top_score": 6.79,
+            "contradiction": true,
+            "detail": "Sentiment=strongly_negative (pos=0, neg=1), score=6.8"
+          },
+          {
+            "check": "confidence_calibration",
+            "pass": true,
+            "confidence_claimed": "the computed scores are based on reliable data sources and methodologies, but the absence of flood risk assessment and the land availability issue in edinburgh may affect overall confidence in site selection.",
+            "has_placeholder_language": false,
+            "overconfident": false,
+            "detail": "Agent claims 'the computed scores are based on reliable data sources and methodologies, but the absence of flood risk assessment and the land availability issue in edinburgh may affect overall confidence in site selection.' confidence without placeholder language"
+          },
+          {
+            "check": "region_mention",
+            "pass": true,
+            "mentioned": [
+              "Leeds / Yorkshire",
+              "Birmingham / West Midlands",
+              "Manchester"
+            ],
+            "top_regions": [
+              "Leeds / Yorkshire",
+              "Birmingham / West Midlands",
+              "Manchester"
+            ],
+            "is_fallback": false,
+            "detail": "Mentions 3/3 top regions"
+          }
+        ],
+        "checks_passed": 3,
+        "checks_total": 4,
+        "overall_pass": true,
+        "pass_rate": 0.75
+      },
+      {
+        "agent": "ResilienceAgent",
+        "is_fallback": false,
+        "checks": [
+          {
+            "check": "keyword_relevance",
+            "pass": true,
+            "coverage": 1.0,
+            "found": [
+              "flood",
+              "resilience",
+              "zone",
+              "risk"
+            ],
+            "expected": [
+              "flood",
+              "resilience",
+              "zone",
+              "risk"
+            ],
+            "detail": "Found 4/4 expected keywords"
+          },
+          {
+            "check": "score_alignment",
+            "pass": false,
+            "agent_sentiment": "strongly_negative",
+            "pos_words": 0,
+            "neg_words": 1,
+            "top_score": 6.79,
+            "contradiction": true,
+            "detail": "Sentiment=strongly_negative (pos=0, neg=1), score=6.8"
+          },
+          {
+            "check": "confidence_calibration",
+            "pass": true,
+            "confidence_claimed": "the computed scores are based on available data and methodologies, but the reliance on incomplete flood data and potential missingness in population estimates may affect the overall confidence in the results.",
+            "has_placeholder_language": false,
+            "overconfident": false,
+            "detail": "Agent claims 'the computed scores are based on available data and methodologies, but the reliance on incomplete flood data and potential missingness in population estimates may affect the overall confidence in the results.' confidence without placeholder language"
+          },
+          {
+            "check": "region_mention",
+            "pass": true,
+            "mentioned": [
+              "Leeds / Yorkshire",
+              "Birmingham / West Midlands",
+              "Manchester"
+            ],
+            "top_regions": [
+              "Leeds / Yorkshire",
+              "Birmingham / West Midlands",
+              "Manchester"
+            ],
+            "is_fallback": false,
+            "detail": "Mentions 3/3 top regions"
+          }
+        ],
+        "checks_passed": 3,
+        "checks_total": 4,
+        "overall_pass": true,
+        "pass_rate": 0.75
+      },
+      {
+        "agent": "LandPlanningAgent",
+        "is_fallback": false,
+        "checks": [
+          {
+            "check": "keyword_relevance",
+            "pass": true,
+            "coverage": 0.8,
+            "found": [
+              "brownfield",
+              "land",
+              "planning",
+              "hectare"
+            ],
+            "expected": [
+              "brownfield",
+              "land",
+              "planning",
+              "hectare",
+              "site"
+            ],
+            "detail": "Found 4/5 expected keywords"
+          },
+          {
+            "check": "score_alignment",
+            "pass": false,
+            "agent_sentiment": "strongly_negative",
+            "pos_words": 0,
+            "neg_words": 1,
+            "top_score": 6.79,
+            "contradiction": true,
+            "detail": "Sentiment=strongly_negative (pos=0, neg=1), score=6.8"
+          },
+          {
+            "check": "confidence_calibration",
+            "pass": true,
+            "confidence_claimed": "high",
+            "has_placeholder_language": false,
+            "overconfident": false,
+            "detail": "Agent claims 'high' confidence without placeholder language"
+          },
+          {
+            "check": "region_mention",
+            "pass": true,
+            "mentioned": [
+              "Leeds / Yorkshire",
+              "Birmingham / West Midlands",
+              "Manchester"
+            ],
+            "top_regions": [
+              "Leeds / Yorkshire",
+              "Birmingham / West Midlands",
+              "Manchester"
+            ],
+            "is_fallback": false,
+            "detail": "Mentions 3/3 top regions"
+          }
+        ],
+        "checks_passed": 3,
+        "checks_total": 4,
+        "overall_pass": true,
+        "pass_rate": 0.75
+      }
+    ],
+    "elapsed_s": 61.0
+  }
+]
