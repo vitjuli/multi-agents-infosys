@@ -7,10 +7,16 @@ The numeric ranking is deterministic and inspectable. OpenAI calls are used only
 ## Setup
 
 ```bash
-python -m venv .venv
-. .venv/bin/activate
-pip install -r requirements.txt
+conda env create -f environment.yml
+conda activate InfoHack
 export OPENAI_API_KEY=...
+```
+
+If the `InfoHack` environment already exists, update it instead:
+
+```bash
+conda env update -f environment.yml --prune
+conda activate InfoHack
 ```
 
 The current prototype expects raw files under `data/raw/` and writes cached outputs to `data/processed/`.
