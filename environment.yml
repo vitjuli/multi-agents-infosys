@@ -15,6 +15,7 @@ dependencies:
   - numpy<2
   - scipy
   - openai
+  - python-dotenv
   - pydantic
   - tabulate
   - tqdm
