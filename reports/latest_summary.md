@@ -1,7 +1,7 @@
 # Production Data-Centre Site Selection Report
 
 ## Input Interpretation
-Prompt: Find the best 5 data centre locations around London for 100 MW compute with a £400m budget
+Prompt: Find the best 5 data centre locations around London for 100 MW compute with a £10bn budget
 
 Workload: `ai_training`
 
@@ -9,7 +9,7 @@ Compute: 100.0 MW
 
 Region: UK-wide
 
-Budget: GBP 400.0m
+Budget: GBP 10.00bn
 
 ## Suggested Constraints
 - Target compute capacity in MW or an expected rack/GPU footprint.
@@ -42,44 +42,44 @@ Assumptions:
 ## Centre Recommendations
 ### Rugby
 - Coordinates: 52.38228, -1.31828; altitude 0.0 m
-- Priority: blocked; feasible: False
+- Priority: priority; feasible: True
 - Compute allocation: 50.0 MW
 - Estimated capex: GBP 434.8m; annual opex: GBP 57.5m
 - Summary: Rugby scores 7.78/10 on the production objective, with strongest support from CO2=7.54, population strain=7.70, policy=7.20, infrastructure=8.12.
-- Problem: Estimated capex GBP 855,607,398 exceeds stated budget GBP 400,000,000.
+- Problem: None
 - Policy points:
   - AI Growth Zones: UK programme for AI-enabled data centres that can improve access to power and planning support; applications are open-ended and eligibility is site-specific.
   - AI Growth Zone delivery reforms: Policy package includes grid-connection acceleration, planning support, and targeted operating-cost support for qualifying AI Growth Zones.
   - Investment Zone tax sites: Designated Investment Zone tax sites can offer business tax reliefs; candidate-specific eligibility needs GIS validation against official tax-site maps.
   - Freeport and Investment Zone employer NIC relief: Employer Class 1 National Insurance relief may apply in designated Freeport or Investment Zone special tax sites.
   - Freeport SDLT relief: Stamp Duty Land Tax relief may apply for qualifying land purchases in English Freeport tax sites until 30 September 2026.
-- Explanation: Rugby is not feasible under the current constraints: Estimated capex GBP 855,607,398 exceeds stated budget GBP 400,000,000.
+- Explanation: The planner ranked Rugby by combining deterministic workload scoring with production criteria for carbon, population water/energy strain, political favour, infrastructure, land reuse, resilience, latency, and cost. The weighted profile favours candidates with high renewable capacity, lower community strain, practical grid/GSP access, brownfield availability, and plausible UK policy support. AI Growth Zones: UK programme for AI-enabled data centres that can improve access to power and planning support; applications are open-ended and eligibility is site-specific. AI Growth Zone delivery reforms: Policy package includes grid-connection acceleration, planning support, and targeted operating-cost support for qualifying AI Growth Zones.
 
 ### Welwyn Hatfield
 - Coordinates: 51.76087, -0.18518; altitude 0.0 m
-- Priority: blocked; feasible: False
+- Priority: priority; feasible: True
 - Compute allocation: 50.0 MW
 - Estimated capex: GBP 420.9m; annual opex: GBP 57.5m
 - Summary: Welwyn Hatfield scores 7.73/10 on the production objective, with strongest support from CO2=7.55, population strain=7.70, policy=7.20, infrastructure=7.18.
-- Problem: Estimated capex GBP 855,607,398 exceeds stated budget GBP 400,000,000.
+- Problem: None
 - Policy points:
   - AI Growth Zones: UK programme for AI-enabled data centres that can improve access to power and planning support; applications are open-ended and eligibility is site-specific.
   - AI Growth Zone delivery reforms: Policy package includes grid-connection acceleration, planning support, and targeted operating-cost support for qualifying AI Growth Zones.
   - Investment Zone tax sites: Designated Investment Zone tax sites can offer business tax reliefs; candidate-specific eligibility needs GIS validation against official tax-site maps.
   - Freeport and Investment Zone employer NIC relief: Employer Class 1 National Insurance relief may apply in designated Freeport or Investment Zone special tax sites.
   - Freeport SDLT relief: Stamp Duty Land Tax relief may apply for qualifying land purchases in English Freeport tax sites until 30 September 2026.
-- Explanation: Welwyn Hatfield is not feasible under the current constraints: Estimated capex GBP 855,607,398 exceeds stated budget GBP 400,000,000.
+- Explanation: The planner ranked Welwyn Hatfield by combining deterministic workload scoring with production criteria for carbon, population water/energy strain, political favour, infrastructure, land reuse, resilience, latency, and cost. The weighted profile favours candidates with high renewable capacity, lower community strain, practical grid/GSP access, brownfield availability, and plausible UK policy support. AI Growth Zones: UK programme for AI-enabled data centres that can improve access to power and planning support; applications are open-ended and eligibility is site-specific. AI Growth Zone delivery reforms: Policy package includes grid-connection acceleration, planning support, and targeted operating-cost support for qualifying AI Growth Zones.
 
 ## Critic Review
 - ScopeCritic: passed; Region scope is UK-constrained and internally consistent.
-- BudgetCritic: needs review; Estimated capex GBP 855,607,398 exceeds stated budget GBP 400,000,000.
+- BudgetCritic: passed; Budget allocation is internally consistent.
 - DataQualityCritic: passed; Water, climate, grid headroom, fibre latency, grants, and tax-site eligibility require stronger site-level datasets before investment decisions.
 
 ## Web Policy Research
 Not requested.
 
 ## Explanation
-Planner interpreted the request as workload=ai_training, compute=100.00 MW, scope=UK-wide, budget=400000000.0. It ran a nested UK-to-local search, asked the budget manager to allocate 2 centre(s), and selected Rugby as the leading option. Critics: ScopeCritic: pass; BudgetCritic: review; DataQualityCritic: pass.
+Planner interpreted the request as workload=ai_training, compute=100.00 MW, scope=UK-wide, budget=10000000000.0. It ran a nested UK-to-local search, asked the budget manager to allocate 2 centre(s), and selected Rugby as the leading option. Critics: ScopeCritic: pass; BudgetCritic: pass; DataQualityCritic: pass.
 
 ## Feedback Request
 Please confirm whether the weighting of CO2, community strain, political support, cost, latency, resilience, and land use matches your decision priorities.
