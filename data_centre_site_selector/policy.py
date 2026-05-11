@@ -2,6 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+"""CAM'S COMMENTS:
+policy.py
+
+    * hardcoded policies? how are these chosen? what do they actually do?
+"""
+
 
 @dataclass(frozen=True)
 class PolicyOpportunity:
@@ -45,12 +51,16 @@ POLICY_OPPORTUNITIES = [
 ]
 
 
-def opportunities_for_region(region: str, country: str | None = None) -> list[PolicyOpportunity]:
+def opportunities_for_region(
+    region: str, country: str | None = None
+) -> list[PolicyOpportunity]:
     return POLICY_OPPORTUNITIES
 
 
 def policy_score(region: str, country: str | None = None) -> float:
-    score = 5.0 + sum(opp.score_bonus for opp in opportunities_for_region(region, country))
+    score = 5.0 + sum(
+        opp.score_bonus for opp in opportunities_for_region(region, country)
+    )
     return max(0.0, min(10.0, score))
 
 
@@ -62,4 +72,7 @@ def policy_points(region: str, country: str | None = None) -> list[str]:
 
 
 def grant_tax_breaks(region: str, country: str | None = None) -> list[str]:
-    return [f"{opp.name} ({opp.source_url})" for opp in opportunities_for_region(region, country)]
+    return [
+        f"{opp.name} ({opp.source_url})"
+        for opp in opportunities_for_region(region, country)
+    ]

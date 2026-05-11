@@ -7,6 +7,14 @@ from pathlib import Path
 from typing import Any
 from zipfile import ZipFile
 
+"""CAM'S COMMENTS:
+geo\_utils.py
+
+   * Which format do we need our geographical data to be in?
+   * what is a parse point?
+   * what do any of these functions even do?
+"""
+
 
 def optional_import(name: str):
     if importlib.util.find_spec(name) is None:
@@ -15,7 +23,10 @@ def optional_import(name: str):
 
 
 def has_geopandas() -> bool:
-    return importlib.util.find_spec("geopandas") is not None and importlib.util.find_spec("shapely") is not None
+    return (
+        importlib.util.find_spec("geopandas") is not None
+        and importlib.util.find_spec("shapely") is not None
+    )
 
 
 def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
