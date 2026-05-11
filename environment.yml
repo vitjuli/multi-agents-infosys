@@ -1,0 +1,20 @@
+name: InfoHack
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - pip
+  - pandas
+  - geopandas
+  - shapely
+  - pyproj
+  - fiona
+  - pyogrio
+  - openpyxl
+  - numpy<2
+  - scipy
+  - openai
+  - pydantic
+  - tabulate
+  - tqdm
