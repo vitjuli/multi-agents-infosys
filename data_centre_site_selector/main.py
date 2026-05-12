@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import sys
 
-from .config import WORKLOAD_WEIGHTS
+from .blueprint_bridge import derive_optimisation_choices_from_blueprint
 from .logging_utils import configure_logging, get_logger
 from .orchestrator import run_site_selection
 from .prompt_parser import parse_budget_gbp
+from .workload_profiles import workload_profile_options
+from src.planning.blueprint_startup import run_blueprint_startup
 
 """CAM'S COMMENTS:
 data\_centre…/main.py
@@ -33,7 +36,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--workload",
         default=None,
-        choices=sorted(WORKLOAD_WEIGHTS),
+        choices=sorted(workload_profile_options()),
         help="Workload profile. If omitted, inferred from the prompt.",
     )
     parser.add_argument(
@@ -43,6 +46,17 @@ def parse_args() -> argparse.Namespace:
         "--region",
         default=None,
         help="UK scope: UK-wide, England, Scotland, Wales, Northern Ireland, or a supported city/cluster.",
+    )
+    parser.add_argument(
+        "--target-location",
+        default=None,
+        help="Explicit target anchor, for example 'Manchester' or 'London'.",
+    )
+    parser.add_argument(
+        "--target-radius-miles",
+        type=float,
+        default=None,
+        help="Radius filter in miles around --target-location.",
     )
     parser.add_argument(
         "--compute-mw", type=float, default=None, help="Target IT compute/load in MW."
@@ -114,10 +128,14 @@ def parse_args() -> argparse.Namespace:
         "--blueprint-mode",
         action="store_true",
         help=(
-            "Run the Preference-Guided Blueprint pipeline: preference interview, "
-            "blueprint approval, selective agent dispatch, and RL policy update. "
-            "Equivalent to running blueprint_main.py."
+            "Use blueprint startup to infer initial run conditions before the standard site-selection run. "
+            "This is the default unless --skip-blueprint-startup is set."
         ),
+    )
+    parser.add_argument(
+        "--skip-blueprint-startup",
+        action="store_true",
+        help="Run the legacy direct site-selection startup without blueprint preference/structure generation.",
     )
     return parser.parse_args()
 
@@ -127,34 +145,28 @@ def main() -> None:
     configure_logging(debug=args.debug, log_file=args.log_file)
     logger.debug("CLI args parsed: %s", vars(args))
 
-    # Delegate to the blueprint pipeline when requested
-    if getattr(args, "blueprint_mode", False):
-        import subprocess, sys as _sys
-        from pathlib import Path as _Path
-        root = _Path(__file__).resolve().parents[1]
-        cmd = [_sys.executable, str(root / "blueprint_main.py")]
-        if args.query and args.query != "Find the best UK location for a data centre":
-            cmd += ["--prompt", args.query]
-        if args.budget:
-            cmd += ["--budget", args.budget]
-        if args.region:
-            cmd += ["--region", args.region]
-        if args.compute_mw:
-            cmd += ["--compute-mw", str(args.compute_mw)]
-        if args.top_k != 5:
-            cmd += ["--top-k", str(args.top_k)]
-        if args.no_agents:
-            cmd += ["--no-agents"]
-        if args.model:
-            cmd += ["--model", args.model]
-        if args.debug:
-            cmd += ["--debug"]
-        raise SystemExit(subprocess.call(cmd))
+    query = args.query
+    optimisation_choices = args.optimise
+    if not args.skip_blueprint_startup:
+        stream = sys.stderr if args.json else sys.stdout
+        with contextlib.redirect_stdout(stream):
+            startup = run_blueprint_startup(
+                query,
+                use_llm_preferences=not args.no_agents,
+                interactive=args.interactive,
+            )
+        query = startup.user_query
+        if optimisation_choices is None:
+            optimisation_choices = derive_optimisation_choices_from_blueprint(startup) or None
+            logger.debug(
+                "Blueprint-derived optimisation choices: %s",
+                optimisation_choices,
+            )
 
     budget_gbp = parse_budget_gbp(args.budget) if args.budget else None
     logger.debug("Parsed budget_gbp=%s from budget=%r", budget_gbp, args.budget)
     result = run_site_selection(
-        query=args.query,
+        query=query,
         workload=args.workload,
         top_k=args.top_k,
         rebuild_features=args.rebuild_features,
@@ -164,8 +176,10 @@ def main() -> None:
         agent_timeout=args.agent_timeout,
         budget_gbp=budget_gbp,
         region=args.region,
+        target_location=args.target_location,
+        target_radius_miles=args.target_radius_miles,
         compute_mw=args.compute_mw,
-        optimisation_choices=args.optimise,
+        optimisation_choices=optimisation_choices,
         enable_web_policy=args.enable_web_policy,
         generate_pdf=not args.no_pdf,
     )
@@ -179,7 +193,7 @@ def main() -> None:
                 "Received interactive clarification with %d characters.", len(answer)
             )
             result = run_site_selection(
-                query=f"{args.query}\nAdditional user input: {answer}",
+                query=f"{query}\nAdditional user input: {answer}",
                 workload=args.workload,
                 top_k=args.top_k,
                 rebuild_features=args.rebuild_features,
@@ -189,8 +203,10 @@ def main() -> None:
                 agent_timeout=args.agent_timeout,
                 budget_gbp=budget_gbp,
                 region=args.region,
+                target_location=args.target_location,
+                target_radius_miles=args.target_radius_miles,
                 compute_mw=args.compute_mw,
-                optimisation_choices=args.optimise,
+                optimisation_choices=optimisation_choices,
                 enable_web_policy=args.enable_web_policy,
                 generate_pdf=not args.no_pdf,
             )

@@ -2,9 +2,13 @@ from __future__ import annotations
 
 import pandas as pd
 
-from .config import WORKLOAD_WEIGHTS
 from .geo_utils import clamp, haversine_km
 from .logging_utils import get_logger
+from .workload_profiles import (
+    WORKLOAD_PROFILES,
+    heuristic_workload_weights,
+    normalise_workload_weights,
+)
 
 """CAM'S COMMENTS:
 
@@ -152,19 +156,25 @@ def add_raw_scores(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def score_for_workload(df: pd.DataFrame, workload: str) -> pd.DataFrame:
-    if workload not in WORKLOAD_WEIGHTS:
+def score_for_workload(
+    df: pd.DataFrame,
+    workload: str,
+    workload_weights: dict[str, float] | None = None,
+) -> pd.DataFrame:
+    if workload not in WORKLOAD_PROFILES:
         raise ValueError(
-            f"Unknown workload '{workload}'. Choose one of: {', '.join(WORKLOAD_WEIGHTS)}"
+            f"Unknown workload '{workload}'. Choose one of: {', '.join(WORKLOAD_PROFILES)}"
         )
+    weights = normalise_workload_weights(
+        workload_weights or heuristic_workload_weights("", workload, [])
+    )
     logger.debug(
         "Scoring workload=%s weights=%s rows=%s.",
         workload,
-        WORKLOAD_WEIGHTS[workload],
+        weights,
         len(df),
     )
     out = add_raw_scores(df)
-    weights = WORKLOAD_WEIGHTS[workload]
     positive = (
         weights.get("energy", 0) * out["energy_score_raw"]
         + weights.get("water", 0) * out["water_score_raw"]
@@ -194,7 +204,11 @@ def score_for_workload(df: pd.DataFrame, workload: str) -> pd.DataFrame:
     return out
 
 
-def workload_summary(workload: str) -> str:
-    weights = WORKLOAD_WEIGHTS[workload]
+def workload_summary(
+    workload: str, workload_weights: dict[str, float] | None = None
+) -> str:
+    weights = normalise_workload_weights(
+        workload_weights or heuristic_workload_weights("", workload, [])
+    )
     parts = [f"{key}={value:.2f}" for key, value in weights.items()]
     return ", ".join(parts)

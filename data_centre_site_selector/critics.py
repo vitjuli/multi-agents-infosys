@@ -27,6 +27,10 @@ def run_deterministic_critics(
         scope_findings.append(
             "No Northern Ireland candidate is present in the current cached candidate table."
         )
+    if constraints.target_location and not constraints.resolved_anchor_region and recommendation_count == 0:
+        scope_findings.append(
+            f"The target location '{constraints.target_location}' could not be matched to a cached candidate anchor."
+        )
     results.append(
         CriticResult(
             "ScopeCritic",

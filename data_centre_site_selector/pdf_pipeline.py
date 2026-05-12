@@ -29,6 +29,7 @@ from datetime import datetime
 from typing import Any
 
 import pandas as pd
+from langchain_openai import ChatOpenAI
 
 from .config import DEFAULT_MODEL, FAST_MODEL, REASONING_MODEL, load_environment
 from .logging_utils import get_logger
@@ -81,26 +82,28 @@ class ReportDraft:
 # ── LLM helper ────────────────────────────────────────────────────────────────
 
 def _call_llm(
-    client: Any,
     model: str,
     system: str,
     user: str,
     max_retries: int = 1,
     temperature: float = 0.3,
 ) -> str:
-    """Call the OpenAI chat-completions endpoint with retry logic."""
+    """Call LangChain ChatOpenAI with retry logic."""
     last_error: Exception | None = None
     for attempt in range(max_retries + 1):
         try:
-            response = client.chat.completions.create(
+            response = ChatOpenAI(
                 model=model,
                 temperature=temperature,
-                messages=[
-                    {"role": "system", "content": system},
-                    {"role": "user",   "content": user},
-                ],
+            ).invoke(
+                [
+                    ("system", system),
+                    ("human", user),
+                ]
             )
-            return response.choices[0].message.content or ""
+            return (
+                response.content if isinstance(response.content, str) else str(response.content)
+            )
         except Exception as exc:
             last_error = exc
             logger.warning("LLM call attempt %d/%d failed: %s", attempt + 1, max_retries + 1, exc)
@@ -422,13 +425,13 @@ class SectionAgent:
         model: str = DEFAULT_MODEL,
         max_retries: int = 1,
     ) -> None:
-        self.client = client
+        self.llm_enabled = bool(client)
         self.model = model
         self.max_retries = max_retries
 
     def run(self, section: str, context: ReportContext) -> str:
         logger.info("SectionAgent: writing section '%s'.", section)
-        if self.client is None:
+        if not self.llm_enabled:
             logger.info("SectionAgent: no LLM client — using deterministic fallback.")
             return self._fallback(section, context)
 
@@ -455,7 +458,7 @@ class SectionAgent:
             "synthesis_summary": (context.synthesis.get("summary") or "")[:400],
         }
         text = _call_llm(
-            self.client, self.model, system,
+            self.model, system,
             json.dumps(user_payload, default=str), self.max_retries,
         )
         return text.strip() if text.strip() else self._fallback(section, context)
@@ -615,13 +618,13 @@ class PlotsAgent:
         model: str = DEFAULT_MODEL,
         max_retries: int = 1,
     ) -> None:
-        self.client = client
+        self.llm_enabled = bool(client)
         self.model = model
         self.max_retries = max_retries
 
     def caption_plot(self, plot: ReportPlot, context: ReportContext) -> str:
         logger.info("PlotsAgent: captioning %s ('%s').", plot.plot_id, plot.title)
-        if self.client is None:
+        if not self.llm_enabled:
             return self._default_caption(plot, context)
 
         system = (
@@ -643,7 +646,7 @@ class PlotsAgent:
             "top_k":              context.top_k,
         }, default=str)
         text = _call_llm(
-            self.client, self.model, system, user, self.max_retries, temperature=0.2
+            self.model, system, user, self.max_retries, temperature=0.2
         )
         return text.strip() if text.strip() else self._default_caption(plot, context)
 
@@ -722,7 +725,7 @@ class RefiningAgent:
         model: str = DEFAULT_MODEL,
         max_retries: int = 1,
     ) -> None:
-        self.client = client
+        self.llm_enabled = bool(client)
         self.model = model or DEFAULT_MODEL
         self.max_retries = max_retries
 
@@ -753,7 +756,7 @@ class RefiningAgent:
         if not original:
             return original
 
-        if self.client is None:
+        if not self.llm_enabled:
             return self._heuristic_refine(original)
 
         system = (
@@ -784,7 +787,7 @@ class RefiningAgent:
             ].to_dict(orient="records"),
         }, default=str)
         result = _call_llm(
-            self.client, self.model, system, user, self.max_retries, temperature=0.2
+            self.model, system, user, self.max_retries, temperature=0.2
         )
         return result.strip() if result.strip() else self._heuristic_refine(original)
 
@@ -912,11 +915,11 @@ class CitationsAgent:
 
     def __init__(
         self,
-        client: Any | None,
+        llm_enabled: bool,
         model: str = DEFAULT_MODEL,
         max_retries: int = 1,
     ) -> None:
-        self.client = client
+        self.llm_enabled = llm_enabled
         self.model = model
         self.max_retries = max_retries
 
@@ -957,7 +960,7 @@ class CitationsAgent:
     def _insert_citations_llm(
         self, section: str, text: str, ref_index: dict[str, int]
     ) -> str:
-        if self.client is None:
+        if not self.llm_enabled:
             return self._insert_citations_heuristic(text, section, ref_index)
 
         refs = [
@@ -985,7 +988,7 @@ class CitationsAgent:
             {"section": section, "text": text, "references": refs}, default=str
         )
         result = _call_llm(
-            self.client, self.model, system, user, self.max_retries, temperature=0.1
+            self.model, system, user, self.max_retries, temperature=0.1
         )
         return result.strip() if result.strip() else self._insert_citations_heuristic(
             text, section, ref_index
@@ -1078,20 +1081,19 @@ def run_pdf_report_pipeline(
     """
     from .pdf_renderer import render_pdf_report  # imported here to avoid circular deps
 
-    # Extract OpenAI client and models from the runner if provided
-    client: Any | None = None
+    # Extract model selection and agent availability from the runner if provided.
+    llm_enabled = bool(runner is not None and getattr(runner, "enabled", False))
     fast_model   = FAST_MODEL   or DEFAULT_MODEL
     reason_model = REASONING_MODEL or DEFAULT_MODEL
     base_model   = DEFAULT_MODEL
 
-    if runner is not None and getattr(runner, "enabled", False):
-        client       = getattr(runner, "client", None)
+    if llm_enabled:
         fast_model   = getattr(runner, "fast_model",      fast_model)
         reason_model = getattr(runner, "reasoning_model", reason_model)
         base_model   = getattr(runner, "model",           base_model)
 
     logger.info(
-        "PDF pipeline: starting. client=%s model=%s", "available" if client else "None", base_model
+        "PDF pipeline: starting. llm=%s model=%s", "enabled" if llm_enabled else "disabled", base_model
     )
 
     # Stage 1 — Preprocess
@@ -1107,21 +1109,21 @@ def run_pdf_report_pipeline(
         "abstract", "introduction", "methodology", "data_overview",
         "results", "discussion", "conclusions",
     ]
-    section_agent = SectionAgent(client, model=fast_model)
+    section_agent = SectionAgent(llm_enabled, model=fast_model)
     sections: dict[str, str] = {}
     for section in SECTIONS:
         sections[section] = section_agent.run(section, context)
 
     # Stage 3 — Plots agent → Draft v1
-    plots_agent = PlotsAgent(client, model=fast_model)
+    plots_agent = PlotsAgent(llm_enabled, model=fast_model)
     draft_v1 = plots_agent.run(context, sections)
 
     # Stage 4 — Refining agent → Draft v2
-    refining_agent = RefiningAgent(client, model=reason_model)
+    refining_agent = RefiningAgent(llm_enabled, model=reason_model)
     draft_v2 = refining_agent.run(draft_v1, context)
 
     # Stage 5 — Citations agent → Draft v3, Draft v4
-    citations_agent = CitationsAgent(client, model=base_model)
+    citations_agent = CitationsAgent(llm_enabled, model=base_model)
     _draft_v3, draft_v4 = citations_agent.run(draft_v2, context)
 
     # Stage 6 — Render PDF

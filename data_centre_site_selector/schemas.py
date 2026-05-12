@@ -6,7 +6,7 @@ from typing import Any, Literal
 """CAM'S COMMENTS:
 * What data classes do we really want here? should check they contain all we need / want 
 """
-RegionLevel = Literal["uk", "country", "city"]
+RegionLevel = Literal["uk", "country", "city", "radius"]
 
 
 @dataclass
@@ -16,9 +16,13 @@ class UserConstraints:
     compute_mw: float | None = None
     region_text: str | None = None
     region_level: RegionLevel = "uk"
+    target_location: str | None = None
+    target_radius_miles: float | None = None
+    resolved_anchor_region: str | None = None
     budget_gbp: float | None = None
     optimisation_choices: list[str] = field(default_factory=list)
     policy_constraints: list[str] = field(default_factory=list)
+    workload_weights: dict[str, float] = field(default_factory=dict)
     unspecified_fields: list[str] = field(default_factory=list)
     suggested_constraints: list[str] = field(default_factory=list)
     invalid_region: str | None = None

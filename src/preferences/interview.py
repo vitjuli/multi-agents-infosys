@@ -8,8 +8,9 @@ from __future__ import annotations
 
 import json
 
+from ..llm_client import structured_chat
+from ..llm_schemas import PreferenceUpdatePayload, UserPreferencesPayload
 from .schemas import UserPreferences
-from ..llm_client import chat_json
 
 
 # ── keyword-based heuristics ────────────────────────────────────────────────
@@ -84,12 +85,17 @@ def _llm_refine_preferences(query: str, base: UserPreferences) -> UserPreference
         "output_format (string). "
         "Be concise. Return ONLY the JSON object."
     )
-    result = chat_json(system, f"Query: {query}\n\nCurrent defaults: {json.dumps(base.to_dict())}")
-    if "_error" in result:
+    try:
+        result = structured_chat(
+            system,
+            f"Query: {query}\n\nCurrent defaults: {json.dumps(base.to_dict())}",
+            UserPreferencesPayload,
+        )
+    except Exception:
         return base
 
     def _get(key: str, default):
-        val = result.get(key)
+        val = getattr(result, key, None)
         return val if val is not None else default
 
     return UserPreferences(
@@ -111,7 +117,10 @@ def _ask(prompt: str, options: list[str], current: str) -> str:
         marker = " (current)" if opt == current else ""
         print(f"    [{i}] {opt}{marker}")
     print(f"    [Enter] keep '{current}'")
-    raw = input("  > ").strip()
+    try:
+        raw = input("  > ").strip()
+    except EOFError:
+        return current
     if not raw:
         return current
     try:
@@ -126,7 +135,11 @@ def _ask(prompt: str, options: list[str], current: str) -> str:
     return current
 
 
-def collect_user_preferences(user_query: str, use_llm: bool = True) -> UserPreferences:
+def collect_user_preferences(
+    user_query: str,
+    use_llm: bool = True,
+    interactive: bool = True,
+) -> UserPreferences:
     """Run the preference interview. Returns a UserPreferences object.
 
     Heuristically infers defaults from the query, optionally refines them
@@ -145,6 +158,9 @@ def collect_user_preferences(user_query: str, use_llm: bool = True) -> UserPrefe
     print(f"    Priorities     : {', '.join(prefs.primary_priorities)}")
     print(f"    Risk tolerance : {prefs.risk_tolerance}")
     print(f"    Must include   : {', '.join(prefs.must_include)}")
+
+    if not interactive:
+        return prefs
 
     print("\n  Answer a few quick questions to refine (press Enter to keep default):")
 
@@ -167,18 +183,24 @@ def collect_user_preferences(user_query: str, use_llm: bool = True) -> UserPrefe
         prefs.risk_tolerance,
     ).split(" ")[0]  # extract just the key word
 
-    raw_include = input(
-        f"\n  Additional must-include sections? (e.g. 'policy, methodology')\n"
-        f"  [Enter to keep: {', '.join(prefs.must_include)}]\n  > "
-    ).strip()
+    try:
+        raw_include = input(
+            f"\n  Additional must-include sections? (e.g. 'policy, methodology')\n"
+            f"  [Enter to keep: {', '.join(prefs.must_include)}]\n  > "
+        ).strip()
+    except EOFError:
+        raw_include = ""
     if raw_include:
         extras = [s.strip() for s in raw_include.split(",") if s.strip()]
         prefs.must_include = list(dict.fromkeys(prefs.must_include + extras))
 
-    raw_avoid = input(
-        "\n  Anything to exclude? (e.g. 'methodology, raw data tables')\n"
-        "  [Enter to skip]\n  > "
-    ).strip()
+    try:
+        raw_avoid = input(
+            "\n  Anything to exclude? (e.g. 'methodology, raw data tables')\n"
+            "  [Enter to skip]\n  > "
+        ).strip()
+    except EOFError:
+        raw_avoid = ""
     if raw_avoid:
         prefs.must_avoid = [s.strip() for s in raw_avoid.split(",") if s.strip()]
 
@@ -193,15 +215,17 @@ def update_preferences_from_feedback(preferences: UserPreferences, feedback: str
         "Valid keys: audience, report_depth, preferred_style, primary_priorities, "
         "risk_tolerance, must_include, must_avoid, output_format."
     )
-    result = chat_json(
-        system,
-        f"Current preferences: {json.dumps(preferences.to_dict())}\n\nUser feedback: {feedback}",
-    )
-    if "_error" in result or not result:
+    try:
+        result = structured_chat(
+            system,
+            f"Current preferences: {json.dumps(preferences.to_dict())}\n\nUser feedback: {feedback}",
+            PreferenceUpdatePayload,
+        )
+    except Exception:
         return preferences
 
     updated = UserPreferences(**preferences.to_dict())
-    for key, value in result.items():
+    for key, value in result.model_dump(exclude_none=True).items():
         if hasattr(updated, key) and value is not None:
             setattr(updated, key, value)
     return updated

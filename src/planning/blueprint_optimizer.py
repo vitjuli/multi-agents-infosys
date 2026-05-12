@@ -7,8 +7,9 @@ from __future__ import annotations
 
 import json
 
+from ..llm_client import structured_chat
+from ..llm_schemas import ReportBlueprintPayload
 from ..preferences.schemas import AgentTask, ReportBlueprint, ReportSection, UserPreferences
-from ..llm_client import chat_json
 
 # Canonical list of available existing agents
 AVAILABLE_AGENTS = [
@@ -208,9 +209,13 @@ def optimise_report_blueprint(
         ),
     }
 
-    result = chat_json(system, json.dumps(context))
-
-    if "_error" in result or "sections" not in result:
+    try:
+        result = structured_chat(
+            system,
+            json.dumps(context),
+            ReportBlueprintPayload,
+        )
+    except Exception:
         # LLM unavailable or returned bad JSON — use rule-based fallback
         return _default_blueprint(user_query, preferences, agents_to_run, agents_to_skip)
 
@@ -218,23 +223,23 @@ def optimise_report_blueprint(
     try:
         sections = [
             ReportSection(
-                name=s.get("name", "Section"),
-                purpose=s.get("purpose", ""),
-                depth=s.get("depth", "medium"),
-                required_evidence=s.get("required_evidence", []),
+                name=s.name,
+                purpose=s.purpose,
+                depth=s.depth,
+                required_evidence=s.required_evidence,
             )
-            for s in result.get("sections", [])
+            for s in result.sections
         ]
 
         agent_tasks = [
             AgentTask(
-                agent=t.get("agent", ""),
-                goal=t.get("goal", ""),
-                required_outputs=t.get("required_outputs", []),
-                section_targets=t.get("section_targets", []),
+                agent=t.agent,
+                goal=t.goal,
+                required_outputs=t.required_outputs,
+                section_targets=t.section_targets,
             )
-            for t in result.get("agent_tasks", [])
-            if t.get("agent") in agents_to_run
+            for t in result.agent_tasks
+            if t.agent in agents_to_run
         ]
 
         # Fill in any missing agent tasks with defaults
@@ -245,11 +250,11 @@ def optimise_report_blueprint(
                 agent_tasks.append(ft)
 
         return ReportBlueprint(
-            title=result.get("title", "UK Data Centre Site Feasibility Report"),
-            goal=result.get("goal", user_query[:150]),
+            title=result.title or "UK Data Centre Site Feasibility Report",
+            goal=result.goal or user_query[:150],
             sections=sections,
-            agents_to_run=result.get("agents_to_run", agents_to_run),
-            agents_to_skip=result.get("agents_to_skip", agents_to_skip),
+            agents_to_run=result.agents_to_run or agents_to_run,
+            agents_to_skip=result.agents_to_skip or agents_to_skip,
             agent_tasks=agent_tasks,
         )
     except Exception:

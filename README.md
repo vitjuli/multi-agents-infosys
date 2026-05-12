@@ -96,6 +96,8 @@ The prompt parser recognises four main input features:
 
 - target compute capacity, usually in MW
 - UK region scope: UK-wide, England, Scotland, Wales, Northern Ireland, or a supported city/cluster
+- explicit target location, for example `--target-location Manchester`
+- optional radius targeting, for example `--target-location London --target-radius-miles 50`
 - budget in GBP
 - optimisation choices such as CO2, water/energy strain on population, political support, land use, resilience, latency, and cost
 
@@ -108,6 +110,13 @@ python -m data_centre_site_selector.main \
   --budget "500m GBP" \
   --optimise resilience \
   --optimise co2
+
+python -m data_centre_site_selector.main \
+  --prompt "Find options within 50 miles of London" \
+  --target-location London \
+  --target-radius-miles 50 \
+  --compute-mw 80 \
+  --budget "1.5bn GBP"
 ```
 
 Supported workloads:
@@ -142,15 +151,27 @@ python -m data_centre_site_selector.main \
 
 Use this only when current policy data matters; deterministic runs remain preferable for reproducible testing.
 
+## Frontend
+
+Run the Streamlit frontend against the same backend pipeline:
+
+```bash
+conda activate InfoHack
+streamlit run streamlit_app.py
+```
+
+The frontend can run blueprint startup non-interactively, display inferred preferences and blueprint structure, and then execute the standard planner/orchestrator flow.
+
 ## Backend Flow
 
 1. Prompt parser extracts compute, region, budget, workload, optimisation choices, missing fields, and suggested constraints.
-2. Planner coordinates the run and restricts all recommendations to UK candidate regions.
-3. Data analysis module performs nested UK-to-country-to-local-authority screening and scores CO2 proxy, population strain, policy favour, infrastructure, land use, cost, and resilience.
-4. Budget manager estimates the number of centres, compute allocation, capex, opex, and materials.
-5. Optional web policy research refreshes policy/grant/tax context for policy-constrained requests.
-6. Critics check scope, budget feasibility, and data quality.
-7. Explainer produces the structured recommendation, technical explanation, and feedback prompt.
+2. Optional blueprint startup runs as a LangGraph flow that infers preferences, loads RL policy weights, and generates a blueprint used to seed the main run.
+3. Planner coordinates the run and restricts all recommendations to UK candidate regions.
+4. Data analysis module performs nested UK-to-country-to-local-authority screening and scores CO2 proxy, population strain, policy favour, infrastructure, land use, cost, and resilience.
+5. Budget manager estimates the number of centres, compute allocation, capex, opex, and materials.
+6. Optional web policy research refreshes policy/grant/tax context for policy-constrained requests.
+7. Critics check scope, budget feasibility, and data quality.
+8. Explainer produces the structured recommendation, technical explanation, and feedback prompt.
 
 ## Important Limitations
 

@@ -17,7 +17,7 @@ DEFAULT_POLICY: dict[str, float] = {
     "conciseness":           0.10,   # preference for shorter, sharper reports
 }
 
-_POLICY_PATH = Path(__file__).resolve().parents[3] / "data" / "policy" / "blueprint_policy.json"
+_POLICY_PATH = Path(__file__).resolve().parents[2] / "data" / "policy" / "blueprint_policy.json"
 
 
 def load_policy(path: str | Path | None = None) -> dict[str, float]:

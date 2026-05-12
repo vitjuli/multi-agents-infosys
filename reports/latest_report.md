@@ -4,7 +4,7 @@
 Find the best 5 data centre locations around Manchester for 500 MW compute with a £10bn budget
 
 ## Workload Profile
-`ai_training` weights: energy=0.28, water=0.14, climate=0.20, latency=0.06, resilience=0.12, land=0.16, planning_risk=0.10
+`ai_inference` weights: energy=0.15, water=0.09, climate=0.09, latency=0.24, resilience=0.17, land=0.09, planning_risk=0.17
 
 ## Dataset Availability
 - ONS LAD boundaries: used if geospatial dependencies are installed; otherwise LAD hints are retained.
@@ -18,141 +18,141 @@ Find the best 5 data centre locations around Manchester for 500 MW compute with 
 ## Ranked Candidates
 | region               |   overall_score |   energy_score_raw |   water_score_raw |   climate_score_raw |   latency_score_raw |   resilience_score_raw |   land_score_raw |   planning_risk_score_raw |   renewable_capacity_50km_mw |   brownfield_hectares_50km |
 |:---------------------|----------------:|-------------------:|------------------:|--------------------:|--------------------:|-----------------------:|-----------------:|--------------------------:|-----------------------------:|---------------------------:|
-| Rugby                |            6.54 |               8.53 |              7.3  |                2.32 |                9.12 |                    7.2 |             7.48 |                         2 |                      16067.4 |                   211238   |
-| Welwyn Hatfield      |            6.45 |               7.7  |              7.3  |                1.74 |                6.87 |                    7.2 |             9.93 |                         2 |                      12930.8 |                   142918   |
-| Dacorum              |            6.42 |               7.87 |              7.23 |                1.74 |                7.32 |                    7.2 |             9.35 |                         2 |                      13497.3 |                   417149   |
-| Hertsmere            |            6.36 |               7.43 |              7.32 |                1.66 |                6.85 |                    7.2 |             9.95 |                         2 |                      12749.5 |                    86710   |
-| Newcastle-under-Lyme |            6.39 |               8.06 |              7.29 |                2.91 |                8.55 |                    7.2 |             6.9  |                         2 |                      13901.5 |                    33017.2 |
+| Rugby                |            7.09 |               8.53 |              7.3  |                2.32 |                9.12 |                    7.2 |             7.48 |                         2 |                      16067.4 |                  211238    |
+| Dacorum              |            6.59 |               7.87 |              7.23 |                1.74 |                7.32 |                    7.2 |             9.35 |                         2 |                      13497.3 |                  417149    |
+| Welwyn Hatfield      |            6.5  |               7.7  |              7.3  |                1.74 |                6.87 |                    7.2 |             9.93 |                         2 |                      12930.8 |                  142918    |
+| Newcastle-under-Lyme |            6.84 |               8.06 |              7.29 |                2.91 |                8.55 |                    7.2 |             6.9  |                         2 |                      13901.5 |                   33017.2  |
+| Stoke-on-Trent       |            6.89 |               8.3  |              7.05 |                2.92 |                8.62 |                    7.2 |             6.97 |                         2 |                      15154.1 |                   33271.4  |
+| Hertsmere            |            6.44 |               7.43 |              7.32 |                1.66 |                6.85 |                    7.2 |             9.95 |                         2 |                      12749.5 |                   86710    |
+| Bedford              |            6.53 |               8.17 |              7.17 |                2.15 |                7.73 |                    7.2 |             6.91 |                         2 |                      13929.4 |                  417573    |
+| Barnsley             |            6.94 |              10    |              7.08 |                3.4  |                9.26 |                    7.2 |             2.49 |                         2 |                      23526.6 |                    5452.03 |
+| Trafford             |            6.83 |               7.48 |              7.1  |                3.3  |                8.39 |                    7.2 |             7.95 |                         2 |                      13249.6 |                   35410.4  |
+| Milton Keynes        |            6.6  |               8.32 |              6.99 |                2.03 |                8    |                    7.2 |             6.93 |                         2 |                      14804.9 |                  412950    |
 
 ## Top Recommendation
-Rugby with overall score 6.54/10.
+Rugby with overall score 7.09/10.
 
 ## Agent Assessments
 ### EnergyAgent
 
-The analysis identifies five potential data centre locations around Manchester suitable for a 500 MW compute workload, focusing on renewable energy capacity, operational versus pipeline energy, and GSP availability. The regions evaluated include Rugby, Welwyn Hatfield, Dacorum, Hertsmere, and Newcastle-under-Lyme, with computed scores reflecting their suitability.
+The analysis identifies the top five data centre locations around Manchester based on a computed overall score, focusing on renewable energy capacity, operational versus pipeline energy, and GSP availability. Each location is evaluated on various factors including energy score, water availability, climate conditions, latency, resilience, land availability, and planning risk.
 
 Key points:
-- {'region': 'Rugby', 'overall_score': 6.54, 'renewable_capacity_50km_mw': 16067.37, 'operational_renewable_capacity_50km_mw': 1289.84, 'pipeline_renewable_capacity_50km_mw': 14777.53}
-- {'region': 'Welwyn Hatfield', 'overall_score': 6.45, 'renewable_capacity_50km_mw': 12930.81, 'operational_renewable_capacity_50km_mw': 1717.92, 'pipeline_renewable_capacity_50km_mw': 11212.9}
-- {'region': 'Dacorum', 'overall_score': 6.42, 'renewable_capacity_50km_mw': 13497.31, 'operational_renewable_capacity_50km_mw': 1661.07, 'pipeline_renewable_capacity_50km_mw': 11836.25}
-- {'region': 'Hertsmere', 'overall_score': 6.36, 'renewable_capacity_50km_mw': 12749.47, 'operational_renewable_capacity_50km_mw': 1518.58, 'pipeline_renewable_capacity_50km_mw': 11230.9}
-- {'region': 'Newcastle-under-Lyme', 'overall_score': 6.39, 'renewable_capacity_50km_mw': 13901.52, 'operational_renewable_capacity_50km_mw': 1682.55, 'pipeline_renewable_capacity_50km_mw': 12218.98}
+- Top locations include Rugby, Newcastle-under-Lyme, Stoke-on-Trent, Barnsley, and Trafford.
+- Rugby has the highest overall score of 7.09, driven by strong energy and latency scores.
+- Barnsley has the highest renewable capacity at 23,526 MW within 50 km, making it a strong candidate for renewable energy sourcing.
+- All regions have a planning risk score of 2.0, indicating a low risk in planning for data centre development.
 
 Risks:
-- Flood zone data is present but not computed, which may pose risks in certain areas.
-- Potential planning risks are indicated by a planning risk score of 2.0 across all regions, suggesting some level of regulatory challenges.
+- Flood zone data is present but not computed, which may pose a risk if flood zones are significant in the area.
+- Potential for changes in energy policy or availability of renewable resources could impact future operational capacity.
 
 Confidence: High
 
 ### WaterAgent
 
-The analysis identifies five potential data centre locations around Manchester suitable for a 500 MW compute workload with a £10 billion budget. The computed scores reflect various factors including energy availability, water resources, climate conditions, latency, resilience, and land availability.
+The analysis identifies the top five data centre locations around Manchester based on computed scores for various factors relevant to a 500 MW compute workload and a £10 billion budget. The scores are derived from multiple metrics including energy availability, water resources, climate conditions, latency, resilience, and land availability.
 
 Key points:
-- {'region': 'Rugby', 'overall_score': 6.54, 'energy_score': 8.53, 'water_score': 7.3, 'latency_score': 9.12, 'resilience_score': 7.2, 'land_score': 7.48}
-- {'region': 'Welwyn Hatfield', 'overall_score': 6.45, 'energy_score': 7.7, 'water_score': 7.3, 'latency_score': 6.87, 'resilience_score': 7.2, 'land_score': 9.93}
-- {'region': 'Dacorum', 'overall_score': 6.42, 'energy_score': 7.87, 'water_score': 7.23, 'latency_score': 7.32, 'resilience_score': 7.2, 'land_score': 9.35}
-- {'region': 'Hertsmere', 'overall_score': 6.36, 'energy_score': 7.43, 'water_score': 7.32, 'latency_score': 6.85, 'resilience_score': 7.2, 'land_score': 9.95}
-- {'region': 'Newcastle-under-Lyme', 'overall_score': 6.39, 'energy_score': 8.06, 'water_score': 7.29, 'latency_score': 8.55, 'resilience_score': 7.2, 'land_score': 6.9}
+- Rugby has the highest overall score of 7.09, indicating a strong balance of energy and water resources.
+- Dacorum and Welwyn Hatfield follow closely with scores of 6.59 and 6.50 respectively, highlighting their potential for data centre development.
+- Newcastle-under-Lyme and Stoke-on-Trent also show promising scores, particularly in energy availability and latency.
+- All locations have a planning risk score of 2.0, indicating a low risk in terms of regulatory challenges.
 
 Risks:
-- Flood data is present but not computed, which may affect the assessment of flood risks in these regions.
-- Water stress data is missing, which could impact the sustainability of water resources for data centre operations.
+- Flood data is present but not computed, which may pose a risk if flooding is a concern in these areas.
+- Potential inaccuracies in water-stress data due to missing information may affect the reliability of water scores.
+- The reliance on dynamic candidates from ONS LAD boundary centroids may introduce variability in the computed scores.
 
-Confidence: Moderate - The computed scores are based on available data, but missing water stress data and uncomputed flood risks introduce uncertainty.
+Confidence: High
 
 ### ClimateCoolingAgent
 
-The analysis identifies five potential data centre locations around Manchester suitable for a 500 MW compute workload with a £10 billion budget, based on computed scores across various criteria.
+The analysis identifies the top five data centre locations around Manchester based on computed scores for various factors such as energy availability, climate conditions, and latency. The overall scores reflect the suitability of each location for a 500 MW compute workload with a £10 billion budget.
 
 Key points:
-- {'region': 'Rugby', 'overall_score': 6.54, 'energy_score': 8.53, 'water_score': 7.3, 'climate_score': 2.32, 'latency_score': 9.12, 'resilience_score': 7.2, 'land_score': 7.48, 'planning_risk_score': 2.0}
-- {'region': 'Welwyn Hatfield', 'overall_score': 6.45, 'energy_score': 7.7, 'water_score': 7.3, 'climate_score': 1.74, 'latency_score': 6.87, 'resilience_score': 7.2, 'land_score': 9.93, 'planning_risk_score': 2.0}
-- {'region': 'Dacorum', 'overall_score': 6.42, 'energy_score': 7.87, 'water_score': 7.23, 'climate_score': 1.74, 'latency_score': 7.32, 'resilience_score': 7.2, 'land_score': 9.35, 'planning_risk_score': 2.0}
-- {'region': 'Hertsmere', 'overall_score': 6.36, 'energy_score': 7.43, 'water_score': 7.32, 'climate_score': 1.66, 'latency_score': 6.85, 'resilience_score': 7.2, 'land_score': 9.95, 'planning_risk_score': 2.0}
-- {'region': 'Newcastle-under-Lyme', 'overall_score': 6.39, 'energy_score': 8.06, 'water_score': 7.29, 'climate_score': 2.91, 'latency_score': 8.55, 'resilience_score': 7.2, 'land_score': 6.9, 'planning_risk_score': 2.0}
+- Rugby has the highest overall score of 7.09, indicating strong energy and latency scores.
+- Newcastle-under-Lyme and Stoke-on-Trent follow closely with scores of 6.84 and 6.89 respectively, both showing good renewable energy capacity.
+- Dacorum and Welwyn Hatfield are also notable, with overall scores of 6.59 and 6.50, respectively, but lower climate scores compared to Rugby.
+- All locations have a planning risk score of 2.0, indicating low planning risk across the board.
 
 Risks:
-- Flood zone data is present but not computed, which may pose a risk to site selection.
-- Potential missing climate data could affect the accuracy of climate scores.
-- Planning risks are uniformly low (score of 2.0), but local regulations may vary.
+- Flood data is present but not computed, which may pose a risk if flood zones intersect with potential sites.
+- Missing climate data could affect the accuracy of climate scores, impacting long-term operational viability.
 
-Confidence: The computed scores are based on a robust dataset, but the absence of complete flood and climate data introduces uncertainty in the final recommendations.
+Confidence: High
 
 ### LatencyAgent
 
-The analysis identifies five potential data centre locations around Manchester suitable for 500 MW compute, focusing on workload latency and proximity to demand hubs. Each location is scored based on various factors including energy availability, water resources, climate conditions, latency, resilience, land availability, and planning risks.
+The analysis identifies the top five data centre locations around Manchester based on computed scores for various factors including energy availability, water resources, climate conditions, latency, resilience, land availability, and planning risks. The overall scores reflect a balance of these factors, particularly focusing on latency and energy capacity, which are critical for AI inference workloads.
 
 Key points:
-- {'region': 'Rugby', 'overall_score': 6.54, 'energy_score': 8.53, 'latency_score': 9.12, 'nearest_major_hub_distance_km': 39.82}
-- {'region': 'Welwyn Hatfield', 'overall_score': 6.45, 'energy_score': 7.7, 'latency_score': 6.87, 'nearest_major_hub_distance_km': 140.98}
-- {'region': 'Dacorum', 'overall_score': 6.42, 'energy_score': 7.87, 'latency_score': 7.32, 'nearest_major_hub_distance_km': 120.74}
-- {'region': 'Hertsmere', 'overall_score': 6.36, 'energy_score': 7.43, 'latency_score': 6.85, 'nearest_major_hub_distance_km': 141.87}
-- {'region': 'Newcastle-under-Lyme', 'overall_score': 6.39, 'energy_score': 8.06, 'latency_score': 8.55, 'nearest_major_hub_distance_km': 65.06}
+- Top location: Rugby with an overall score of 7.09, strong energy and latency scores.
+- Dacorum and Welwyn Hatfield follow closely, with overall scores of 6.59 and 6.50 respectively, but with higher distances to major hubs.
+- Newcastle-under-Lyme and Stoke-on-Trent also rank well, both showing good energy and latency scores, essential for AI workloads.
+- All locations have a planning risk score of 2.0, indicating low planning risks across the board.
 
 Risks:
-- Flood risk data is present but not computed, which may affect site safety assessments.
-- Potential planning risks are noted, but specific details are not provided.
+- Flood data is present but not computed for all locations, which may pose a risk if not assessed properly.
+- Potential limitations in renewable energy capacity in some areas may affect long-term sustainability.
+- Distance to major hubs varies significantly, which could impact latency for certain applications.
 
-Confidence: The computed scores are based on a comprehensive analysis of available data, but the absence of flood risk computations introduces uncertainty regarding site safety.
+Confidence: High
 
 ### ResilienceAgent
 
-The analysis identifies five potential data centre locations around Manchester suitable for a 500 MW compute workload with a £10bn budget, focusing on resilience, energy capacity, and environmental factors.
+The analysis identifies the top five data centre locations around Manchester based on computed scores for various factors relevant to a 500 MW compute workload with a £10 billion budget. The scores reflect energy availability, water resources, climate resilience, latency, and land availability, among other factors.
 
 Key points:
-- {'region': 'Rugby', 'overall_score': 6.54, 'energy_score': 8.53, 'water_score': 7.3, 'latency_score': 9.12, 'resilience_score': 7.2}
-- {'region': 'Welwyn Hatfield', 'overall_score': 6.45, 'energy_score': 7.7, 'water_score': 7.3, 'latency_score': 6.87, 'resilience_score': 7.2}
-- {'region': 'Dacorum', 'overall_score': 6.42, 'energy_score': 7.87, 'water_score': 7.23, 'latency_score': 7.32, 'resilience_score': 7.2}
-- {'region': 'Hertsmere', 'overall_score': 6.36, 'energy_score': 7.43, 'water_score': 7.32, 'latency_score': 6.85, 'resilience_score': 7.2}
-- {'region': 'Newcastle-under-Lyme', 'overall_score': 6.39, 'energy_score': 8.06, 'water_score': 7.29, 'latency_score': 8.55, 'resilience_score': 7.2}
+- Rugby has the highest overall score of 7.09, indicating strong energy and latency scores.
+- Newcastle-under-Lyme and Stoke-on-Trent follow closely with overall scores of 6.84 and 6.89, respectively, both showing good energy and latency scores.
+- Dacorum and Welwyn Hatfield are also strong contenders with overall scores of 6.59 and 6.50, respectively, benefiting from high land scores.
+- All regions have a planning risk score of 2.0, indicating a consistent level of planning risk across the selected locations.
+- Flood zone data is present but not fully computed, which may affect the assessment of flood risks in these areas.
 
 Risks:
-- Flood data is present but not fully computed, which may affect the assessment of flood risks in these regions.
-- Potential missing data from Scotland in the population estimates could impact the accuracy of demographic-related analyses.
+- Flood zone data is incomplete, which could lead to unanticipated flood risks in selected locations.
+- Potential latency issues due to distance from major hubs, particularly in Dacorum and Welwyn Hatfield.
+- Variability in renewable energy capacity could impact operational sustainability in the long term.
 
 Confidence: High
 
 ### LandPlanningAgent
 
-The analysis identifies five potential data centre locations around Manchester based on computed scores for various factors relevant to AI training workloads. The focus is on brownfield land availability and planning risk, with scores reflecting energy, water, climate, latency, resilience, land availability, and planning risk.
+The analysis identifies the top five data centre locations around Manchester based on a computed overall score, focusing on brownfield land availability and planning risk. The scores are derived from various factors including energy availability, water resources, climate conditions, latency, resilience, land availability, and planning risk.
 
 Key points:
-- {'region': 'Rugby', 'overall_score': 6.54, 'energy_score': 8.53, 'water_score': 7.3, 'climate_score': 2.32, 'latency_score': 9.12, 'resilience_score': 7.2, 'land_score': 7.48, 'planning_risk_score': 2.0, 'brownfield_hectares': 211238.22}
-- {'region': 'Welwyn Hatfield', 'overall_score': 6.45, 'energy_score': 7.7, 'water_score': 7.3, 'climate_score': 1.74, 'latency_score': 6.87, 'resilience_score': 7.2, 'land_score': 9.93, 'planning_risk_score': 2.0, 'brownfield_hectares': 142918.39}
-- {'region': 'Dacorum', 'overall_score': 6.42, 'energy_score': 7.87, 'water_score': 7.23, 'climate_score': 1.74, 'latency_score': 7.32, 'resilience_score': 7.2, 'land_score': 9.35, 'planning_risk_score': 2.0, 'brownfield_hectares': 417148.7}
-- {'region': 'Hertsmere', 'overall_score': 6.36, 'energy_score': 7.43, 'water_score': 7.32, 'climate_score': 1.66, 'latency_score': 6.85, 'resilience_score': 7.2, 'land_score': 9.95, 'planning_risk_score': 2.0, 'brownfield_hectares': 86709.99}
-- {'region': 'Newcastle-under-Lyme', 'overall_score': 6.39, 'energy_score': 8.06, 'water_score': 7.29, 'climate_score': 2.91, 'latency_score': 8.55, 'resilience_score': 7.2, 'land_score': 6.9, 'planning_risk_score': 2.0, 'brownfield_hectares': 33017.23}
+- Rugby has the highest overall score of 7.09, indicating strong potential for data centre development.
+- Dacorum and Welwyn Hatfield follow with scores of 6.59 and 6.50 respectively, highlighting their favorable conditions for data centres.
+- Newcastle-under-Lyme and Stoke-on-Trent also rank well, with scores of 6.84 and 6.89, respectively, showcasing good energy and water resources.
+- All selected locations have a planning risk score of 2.0, indicating a low risk of planning issues.
+- Brownfield land availability is significant in all regions, which is crucial for sustainable development.
 
 Risks:
-- Planning risk remains constant across all regions, indicating potential bureaucratic hurdles.
-- Flood zone data is present but not computed, which may pose risks if areas are prone to flooding.
-- Variability in climate scores suggests differing environmental impacts that could affect operational efficiency.
+- Flood zone data is present but not fully computed, which may pose a risk if areas are prone to flooding.
+- Potential discrepancies in population estimates and renewable capacity data could affect site viability assessments.
 
-Confidence: High confidence in computed scores based on available data, though some data limitations exist, particularly regarding flood risk assessment.
+Confidence: High
 
 
 ## Critic Review
 ### CriticAgent
 
-The analysis identifies potential data centre locations around Manchester for a 500 MW compute workload with a £10bn budget. The regions evaluated include Rugby, Welwyn Hatfield, Dacorum, Hertsmere, and Newcastle-under-Lyme. The overall scores reflect a combination of factors such as energy availability, water resources, climate conditions, latency, resilience, land availability, and planning risks.
+The analysis identifies the top five data centre locations around Manchester based on computed scores for various factors relevant to a 500 MW compute workload with a £10 billion budget. The scores are derived from multiple metrics including energy availability, water resources, climate conditions, latency, resilience, and land availability. Rugby, Newcastle-under-Lyme, Stoke-on-Trent, Barnsley, and Trafford are highlighted as top candidates.
 
 Key points:
-- {'region': 'Rugby', 'overall_score': 6.54, 'energy_score': 8.53, 'water_score': 7.3, 'climate_score': 2.32, 'latency_score': 9.12, 'resilience_score': 7.2, 'land_score': 7.48, 'planning_risk_score': 2.0}
-- {'region': 'Welwyn Hatfield', 'overall_score': 6.45, 'energy_score': 7.7, 'water_score': 7.3, 'climate_score': 1.74, 'latency_score': 6.87, 'resilience_score': 7.2, 'land_score': 9.93, 'planning_risk_score': 2.0}
-- {'region': 'Dacorum', 'overall_score': 6.42, 'energy_score': 7.87, 'water_score': 7.23, 'climate_score': 1.74, 'latency_score': 7.32, 'resilience_score': 7.2, 'land_score': 9.35, 'planning_risk_score': 2.0}
-- {'region': 'Hertsmere', 'overall_score': 6.36, 'energy_score': 7.43, 'water_score': 7.32, 'climate_score': 1.66, 'latency_score': 6.85, 'resilience_score': 7.2, 'land_score': 9.95, 'planning_risk_score': 2.0}
-- {'region': 'Newcastle-under-Lyme', 'overall_score': 6.39, 'energy_score': 8.06, 'water_score': 7.29, 'climate_score': 2.91, 'latency_score': 8.55, 'resilience_score': 7.2, 'land_score': 6.9, 'planning_risk_score': 2.0}
+- Rugby has the highest overall score of 7.09, driven by strong energy and latency scores.
+- Barnsley has the highest renewable capacity at 23,526 MW within 50 km, making it a strong candidate for renewable energy sourcing.
+- All regions have a planning risk score of 2.0, indicating a low risk in planning for data centre development.
+- Flood zone data is present but not computed, which may pose a risk if flood zones are significant in the area.
 
 Risks:
-- Flood zone data is present but not computed, which may pose risks in certain areas.
-- Potential planning risks are indicated by a planning risk score of 2.0 across all regions, suggesting some level of regulatory challenges.
-- Water stress data is missing, which could impact the sustainability of water resources for data centre operations.
-- Potential missing climate data could affect the accuracy of climate scores.
-- Variability in climate scores suggests differing environmental impacts that could affect operational efficiency.
+- Flood zone data is present but not computed, which may pose a risk if flood zones intersect with potential sites.
+- Potential inaccuracies in water-stress data due to missing information may affect the reliability of water scores.
+- Missing climate data could affect the accuracy of climate scores, impacting long-term operational viability.
+- Potential limitations in renewable energy capacity in some areas may affect long-term sustainability.
 
-Confidence: Moderate - The computed scores are based on available data, but missing water stress data and uncomputed flood risks introduce uncertainty. High confidence in energy and land availability data, though some data limitations exist, particularly regarding flood risk assessment.
+Confidence: High
 
 
 ## Uncertainties
@@ -172,4 +172,4 @@ Confidence: Moderate - The computed scores are based on available data, but miss
 This is a hackathon prototype using public datasets and heuristic scoring. It is not an investment-grade site-selection tool. Some scores, especially water and climate, are placeholders until appropriate datasets are added.
 
 ## Final Recommendation
-The analysis identifies five potential data centre locations around Manchester suitable for a 500 MW compute workload with a £10bn budget. The regions evaluated include Rugby, Welwyn Hatfield, Dacorum, Hertsmere, and Newcastle-under-Lyme. The overall scores reflect a combination of factors such as energy availability, water resources, climate conditions, latency, resilience, land availability, and planning risks.
+The analysis identifies the top five data centre locations around Manchester based on computed scores for various factors relevant to a 500 MW compute workload with a £10 billion budget. The scores are derived from multiple metrics including energy availability, water resources, climate conditions, latency, resilience, and land availability. Rugby, Newcastle-under-Lyme, Stoke-on-Trent, Barnsley, and Trafford are highlighted as top candidates.

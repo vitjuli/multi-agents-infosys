@@ -78,6 +78,8 @@ def run_site_selection(
     agent_timeout: float = 45.0,
     budget_gbp: float | None = None,
     region: str | None = None,
+    target_location: str | None = None,
+    target_radius_miles: float | None = None,
     compute_mw: float | None = None,
     optimisation_choices: list[str] | None = None,
     enable_web_policy: bool = False,
@@ -85,7 +87,7 @@ def run_site_selection(
 ) -> dict:
     logger.info("Starting site-selection run.")
     logger.debug(
-        "Run inputs query=%r workload=%r top_k=%s rebuild_features=%s include_flood=%s use_agents=%s web_policy=%s budget_gbp=%s region=%r compute_mw=%s optimise=%s",
+        "Run inputs query=%r workload=%r top_k=%s rebuild_features=%s include_flood=%s use_agents=%s web_policy=%s budget_gbp=%s region=%r target_location=%r target_radius_miles=%s compute_mw=%s optimise=%s",
         query,
         workload,
         top_k,
@@ -95,6 +97,8 @@ def run_site_selection(
         enable_web_policy,
         budget_gbp,
         region,
+        target_location,
+        target_radius_miles,
         compute_mw,
         optimisation_choices,
     )
@@ -104,8 +108,27 @@ def run_site_selection(
         workload=workload,
         budget_gbp=budget_gbp,
         region=region,
+        target_location=target_location,
+        target_radius_miles=target_radius_miles,
         compute_mw=compute_mw,
         optimisation_choices=optimisation_choices,
+    )
+    runner = (
+        AgentRunner(
+            model=model,
+            timeout=agent_timeout,
+            enabled=use_agents,
+            enable_web=enable_web_policy,
+        )
+        if model
+        else AgentRunner(
+            timeout=agent_timeout, enabled=use_agents, enable_web=enable_web_policy
+        )
+    )
+    constraints.workload_weights = runner.resolve_workload_weights(
+        query=query,
+        workload=constraints.workload,
+        optimisation_choices=constraints.optimisation_choices,
     )
     logger.info(
         "Planning for workload '%s' across scope '%s'.",
@@ -123,18 +146,6 @@ def run_site_selection(
         ranked[["region", "production_score", "overall_score"]]
         .head(top_k)
         .to_dict(orient="records"),
-    )
-    runner = (
-        AgentRunner(
-            model=model,
-            timeout=agent_timeout,
-            enabled=use_agents,
-            enable_web=enable_web_policy,
-        )
-        if model
-        else AgentRunner(
-            timeout=agent_timeout, enabled=use_agents, enable_web=enable_web_policy
-        )
     )
     policy_research = None
     if enable_web_policy and (
@@ -156,7 +167,14 @@ def run_site_selection(
     )
     logger.info("Building Markdown report.")
     md = build_markdown_report(
-        query, constraints.workload, ranked, agent_summaries, critic, synthesis, top_k
+        query,
+        constraints.workload,
+        ranked,
+        agent_summaries,
+        critic,
+        synthesis,
+        top_k,
+        constraints.workload_weights,
     )
     LATEST_REPORT_MD.write_text(md, encoding="utf-8")
     logger.info("Wrote Markdown report to %s.", LATEST_REPORT_MD)

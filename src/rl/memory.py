@@ -10,7 +10,7 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-_MEMORY_PATH = Path(__file__).resolve().parents[3] / "data" / "policy" / "run_memory.json"
+_MEMORY_PATH = Path(__file__).resolve().parents[2] / "data" / "policy" / "run_memory.json"
 
 
 def save_run_to_memory(run_data: dict, path: str | Path | None = None) -> None:

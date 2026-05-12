@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import re
 
-from .config import WORKLOAD_WEIGHTS
 from .logging_utils import get_logger
 from .schemas import UserConstraints
+from .workload_profiles import WORKLOAD_PROFILES
 
 """CAM'S COMMENTS:
 prompt\_parset.py
@@ -133,12 +133,35 @@ def parse_compute_mw(text: str) -> float | None:
     return float(match.group(1)) if match else None
 
 
+def parse_radius_miles(text: str) -> tuple[float, str] | None:
+    patterns = [
+        r"within\s+([0-9]+(?:\.[0-9]+)?)\s*(mile|miles|mi|km|kilometre|kilometres|kilometer|kilometers)\s+of\s+([a-z][a-z\s\-']+)",
+        r"around\s+([a-z][a-z\s\-']+)\s+within\s+([0-9]+(?:\.[0-9]+)?)\s*(mile|miles|mi|km|kilometre|kilometres|kilometer|kilometers)",
+    ]
+    lowered = text.lower()
+    for pattern in patterns:
+        match = re.search(pattern, lowered, re.I)
+        if not match:
+            continue
+        if pattern.startswith("within"):
+            amount = float(match.group(1))
+            unit = match.group(2).lower()
+            location = match.group(3).strip(" .,\n\t")
+        else:
+            location = match.group(1).strip(" .,\n\t")
+            amount = float(match.group(2))
+            unit = match.group(3).lower()
+        miles = amount * 0.621371 if unit.startswith("km") or unit.startswith("kilo") else amount
+        return miles, location.title()
+    return None
+
+
 def detect_workload(text: str, fallback: str = "ai_training") -> str:
     lowered = text.lower()
     for workload, keywords in WORKLOAD_KEYWORDS.items():
         if any(contains_keyword(lowered, keyword) for keyword in keywords):
             return workload
-    return fallback if fallback in WORKLOAD_WEIGHTS else "ai_training"
+    return fallback if fallback in WORKLOAD_PROFILES else "ai_training"
 
 
 def detect_region(text: str) -> tuple[str, str | None, str | None]:
@@ -194,6 +217,8 @@ def parse_user_constraints(
     workload: str | None = None,
     budget_gbp: float | None = None,
     region: str | None = None,
+    target_location: str | None = None,
+    target_radius_miles: float | None = None,
     compute_mw: float | None = None,
     optimisation_choices: list[str] | None = None,
 ) -> UserConstraints:
@@ -202,20 +227,42 @@ def parse_user_constraints(
         for part in [prompt, region or "", " ".join(optimisation_choices or [])]
         if part
     )
+    parsed_radius = parse_radius_miles(combined)
     region_level, region_text, invalid_region = detect_region(combined)
+    derived_target_location = target_location
+    derived_target_radius_miles = target_radius_miles
+    if parsed_radius and not target_location and target_radius_miles is None:
+        derived_target_radius_miles, derived_target_location = parsed_radius
+        region_level = "radius"
+        region_text = (
+            f"within {derived_target_radius_miles:.0f} miles of {derived_target_location}"
+        )
     if (
         region
         and region_level == "uk"
         and region.lower() not in {"uk", "uk-wide", "united kingdom", "britain"}
     ):
         region_level, region_text = "city", region
+    if derived_target_location and derived_target_radius_miles is not None:
+        region_level = "radius"
+        region_text = (
+            f"within {derived_target_radius_miles:.0f} miles of {derived_target_location}"
+        )
+    elif derived_target_location and not region:
+        region_level = "city"
+        region_text = derived_target_location
+    chosen_region_text = region_text
+    if region and derived_target_location is None:
+        chosen_region_text = region
     choices, policies = detect_choices(combined)
     constraints = UserConstraints(
         prompt=prompt,
         workload=workload or detect_workload(combined),
         compute_mw=compute_mw if compute_mw is not None else parse_compute_mw(combined),
-        region_text=region or region_text,
+        region_text=chosen_region_text,
         region_level=region_level,
+        target_location=derived_target_location,
+        target_radius_miles=derived_target_radius_miles,
         budget_gbp=budget_gbp if budget_gbp is not None else parse_budget_gbp(combined),
         optimisation_choices=optimisation_choices or choices,
         policy_constraints=policies,

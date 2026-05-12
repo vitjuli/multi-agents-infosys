@@ -1,14 +1,13 @@
 from dotenv import load_dotenv
-from openai import OpenAI
+from langchain_openai import ChatOpenAI
 
 load_dotenv()
 
-client = OpenAI()
-
 
 def ask_openai(prompt: str, model: str = "gpt-5.2") -> str:
-    response = client.responses.create(
-        model=model,
-        input=prompt,
+    response = ChatOpenAI(model=model, temperature=0).invoke(
+        [
+            ("human", prompt),
+        ]
     )
-    return response.output_text
+    return response.content if isinstance(response.content, str) else str(response.content)

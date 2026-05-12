@@ -9,8 +9,9 @@ from __future__ import annotations
 import json
 import re
 
+from ..llm_client import structured_chat
+from ..llm_schemas import BlueprintCriticPayload
 from ..preferences.schemas import BlueprintCriticResult, ReportBlueprint, UserPreferences
-from ..llm_client import chat_json
 
 
 def _rule_based_critic(
@@ -98,21 +99,25 @@ def critic_evaluate(
         ),
     }
 
-    result = chat_json(system, json.dumps(context))
-
-    if "_error" in result or "critic_score" not in result:
+    try:
+        result = structured_chat(
+            system,
+            json.dumps(context),
+            BlueprintCriticPayload,
+        )
+    except Exception:
         return _rule_based_critic(final_report, blueprint, preferences)
 
     try:
         return BlueprintCriticResult(
-            critic_score=float(result.get("critic_score", 5.0)),
-            passes_blueprint_check=bool(result.get("passes_blueprint_check", False)),
-            missing_sections=result.get("missing_sections", []),
-            missing_evidence=result.get("missing_evidence", []),
-            unsupported_claims=result.get("unsupported_claims", []),
-            clarity_score=float(result.get("clarity_score", 0.5)),
-            risk_coverage_score=float(result.get("risk_coverage_score", 0.5)),
-            feedback=result.get("feedback", ""),
+            critic_score=float(result.critic_score),
+            passes_blueprint_check=bool(result.passes_blueprint_check),
+            missing_sections=result.missing_sections,
+            missing_evidence=result.missing_evidence,
+            unsupported_claims=result.unsupported_claims,
+            clarity_score=float(result.clarity_score),
+            risk_coverage_score=float(result.risk_coverage_score),
+            feedback=result.feedback,
         )
     except Exception:
         return _rule_based_critic(final_report, blueprint, preferences)

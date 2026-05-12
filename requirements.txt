@@ -12,6 +12,10 @@ python-dotenv
 pydantic
 tabulate
 tqdm
+langgraph
+langchain
+langchain-openai
+streamlit
 # PDF report pipeline
 matplotlib
 reportlab

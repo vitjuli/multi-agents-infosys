@@ -37,12 +37,10 @@ from data_centre_site_selector.planner import run_planner
 from data_centre_site_selector.prompt_parser import parse_budget_gbp, parse_user_constraints
 
 # ── new blueprint system imports ─────────────────────────────────────────────
-from src.preferences.interview import collect_user_preferences, update_preferences_from_feedback
-from src.planning.blueprint_optimizer import optimise_report_blueprint
-from src.planning.report_blueprint import blueprint_to_text, print_blueprint
+from src.planning.blueprint_startup import banner as _banner
+from src.planning.blueprint_startup import run_blueprint_startup
 from src.planning.task_dispatcher import run_agents_from_blueprint
-from src.rl.blueprint_policy import load_policy, policy_summary
-from src.rl.memory import memory_summary
+from src.rl.blueprint_policy import policy_summary
 from src.rl.policy_update import update_policy_from_feedback
 from src.reports.critic import critic_evaluate, print_critic_result
 from src.reports.final_report_composer import compose_final_report
@@ -52,16 +50,6 @@ _REPORT_DIR.mkdir(exist_ok=True)
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────
-
-def _banner(text: str, width: int = 64) -> None:
-    print(f"\n{'━' * width}")
-    print(f"  {text}")
-    print(f"{'━' * width}")
-
-
-def _print_policy(policy: dict) -> None:
-    print(f"\n  Active policy weights: {policy_summary(policy)}")
-
 
 def _save_report(content: str, filename: str = "blueprint_report.md") -> Path:
     path = _REPORT_DIR / filename
@@ -84,6 +72,16 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--no-llm-prefs", action="store_true", help="Skip LLM preference refinement.")
     parser.add_argument("--model", default=None)
     parser.add_argument("--agent-timeout", type=float, default=45.0)
+    parser.add_argument(
+        "--enable-web-policy",
+        action="store_true",
+        help="Allow policy/web research agents to use OpenAI web search when available.",
+    )
+    parser.add_argument(
+        "--non-interactive",
+        action="store_true",
+        help="Use inferred preferences, auto-approve the blueprint, and auto-accept feedback prompts.",
+    )
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--json", dest="json_out", action="store_true", help="Also dump JSON output.")
     return parser.parse_args()
@@ -91,63 +89,21 @@ def _parse_args() -> argparse.Namespace:
 
 # ── main flow ────────────────────────────────────────────────────────────────
 
-def main() -> None:
-    args = _parse_args()
+def main(args: argparse.Namespace | None = None) -> None:
+    if args is None:
+        args = _parse_args()
     configure_logging(debug=args.debug)
     load_environment()
 
-    # ── 0. Greet ──────────────────────────────────────────────────────────────
-    _banner("Preference-Guided Research Blueprint System")
-    print("  UK AI Data Centre Site Selection | Hackathon Demo")
-    mem = memory_summary()
-    print(f"  Memory: {mem}")
-
-    # ── 1. User query ─────────────────────────────────────────────────────────
-    if args.prompt:
-        user_query = args.prompt
-        print(f"\n  Query: {user_query}")
-    else:
-        print()
-        user_query = input("  Enter your research question:\n  > ").strip()
-        if not user_query:
-            user_query = "Find the best UK location for a 100 MW AI training data centre"
-            print(f"  Using default: {user_query}")
-
-    # ── 2. Preference interview ───────────────────────────────────────────────
-    _banner("Step 1 — Preference Interview")
-    preferences = collect_user_preferences(user_query, use_llm=not args.no_llm_prefs)
-    print("\n  Preferences confirmed.")
-
-    # ── 3. Load policy ────────────────────────────────────────────────────────
-    policy = load_policy()
-    _print_policy(policy)
-
-    # ── 4. Blueprint generation + approval loop ───────────────────────────────
-    _banner("Step 2 — Report Blueprint")
-    blueprint = optimise_report_blueprint(user_query, preferences, policy)
-    blueprint_approved_first_try = False
-
-    iteration = 0
-    while True:
-        iteration += 1
-        print_blueprint(blueprint)
-
-        approval = input(
-            "  Approve this structure? Type 'yes' to continue, or describe changes:\n  > "
-        ).strip()
-
-        if approval.lower() in ("yes", "y", "ok", "approve", "approved", ""):
-            blueprint_approved_first_try = (iteration == 1)
-            print("  Blueprint approved.")
-            break
-
-        print("\n  Updating preferences and regenerating blueprint...")
-        preferences = update_preferences_from_feedback(preferences, approval)
-        blueprint = optimise_report_blueprint(user_query, preferences, policy)
-
-        if iteration >= 5:
-            print("  Maximum iterations reached — proceeding with current blueprint.")
-            break
+    startup = run_blueprint_startup(
+        args.prompt,
+        use_llm_preferences=not args.no_llm_prefs,
+        interactive=not getattr(args, "non_interactive", False),
+    )
+    user_query = startup.user_query
+    preferences = startup.preferences
+    blueprint = startup.blueprint
+    blueprint_approved_first_try = startup.approved_first_try
 
     # ── 5. Feature loading + scoring (existing pipeline) ─────────────────────
     _banner("Step 3 — Loading Data & Scoring Candidates")
@@ -163,6 +119,17 @@ def main() -> None:
         region=args.region,
         compute_mw=args.compute_mw,
     )
+    runner = AgentRunner(
+        model=args.model,
+        timeout=args.agent_timeout,
+        enabled=not args.no_agents,
+        enable_web=getattr(args, "enable_web_policy", False),
+    )
+    constraints.workload_weights = runner.resolve_workload_weights(
+        query=user_query,
+        workload=constraints.workload,
+        optimisation_choices=constraints.optimisation_choices,
+    )
     print(f"  Workload: {constraints.workload} | Region: {constraints.region_text}")
 
     planning_result = run_planner(features, constraints, args.top_k)
@@ -175,12 +142,6 @@ def main() -> None:
     print(f"  Agents selected by blueprint: {', '.join(blueprint.agents_to_run)}")
     if blueprint.agents_to_skip:
         print(f"  Skipping: {', '.join(blueprint.agents_to_skip)} (not required by blueprint)")
-
-    runner = AgentRunner(
-        model=args.model,
-        timeout=args.agent_timeout,
-        enabled=not args.no_agents,
-    )
 
     agent_outputs = run_agents_from_blueprint(
         blueprint=blueprint,
@@ -216,9 +177,17 @@ def main() -> None:
 
     # ── 9. User acceptance + policy update ───────────────────────────────────
     _banner("Step 7 — Feedback & Policy Update")
-    user_feedback = input(
-        "\n  Accept this report, or describe what you want changed:\n  > "
-    ).strip()
+    if getattr(args, "non_interactive", False):
+        user_feedback = "yes"
+        print("\n  Non-interactive mode: accepting report for policy update.")
+    else:
+        try:
+            user_feedback = input(
+                "\n  Accept this report, or describe what you want changed:\n  > "
+            ).strip()
+        except EOFError:
+            user_feedback = "yes"
+            print("\n  No stdin available: accepting report for policy update.")
     if not user_feedback:
         user_feedback = "yes"
 

@@ -19,3 +19,8 @@ dependencies:
   - pydantic
   - tabulate
   - tqdm
+  - pip:
+      - langgraph
+      - langchain
+      - langchain-openai
+      - streamlit

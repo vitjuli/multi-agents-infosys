@@ -98,6 +98,7 @@ def build_markdown_report(
     critic: dict[str, Any],
     synthesis: dict[str, Any],
     top_k: int,
+    workload_weights: dict[str, float] | None = None,
 ) -> str:
     top = ranked.iloc[0]
     uncertainties = [
@@ -117,7 +118,7 @@ def build_markdown_report(
         [
             "# Data Centre Site Selection Report",
             f"## Query\n{query}",
-            f"## Workload Profile\n`{workload}` weights: {workload_summary(workload)}",
+            f"## Workload Profile\n`{workload}` weights: {workload_summary(workload, workload_weights)}",
             f"## Dataset Availability\n{dataset_availability(ranked)}",
             f"## Ranked Candidates\n{table_markdown(ranked, top_k)}",
             f"## Top Recommendation\n{top['region']} with overall score {top['overall_score']:.2f}/10.",

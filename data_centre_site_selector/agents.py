@@ -6,7 +6,8 @@ import time
 from typing import Any
 
 import pandas as pd
-from openai import OpenAI
+from langchain_openai import ChatOpenAI
+from pydantic import BaseModel, Field
 
 from .config import (
     DEFAULT_MODEL,
@@ -16,6 +17,12 @@ from .config import (
     load_environment,
 )
 from .logging_utils import get_logger
+from .workload_profiles import (
+    WORKLOAD_PROFILES,
+    WORKLOAD_WEIGHT_DIMENSIONS,
+    heuristic_workload_weights,
+    normalise_workload_weights,
+)
 
 """CAM'S COMMENTS:
 agents.py
@@ -42,9 +49,31 @@ REASONING_AGENTS = {
     "ExplainerAgent",
 }
 WEB_RESEARCH_AGENTS = {"PolicyResearchAgent", "GrantResearchAgent"}
+STRUCTURED_DECISION_AGENTS = {"WorkloadWeightAgent"}
 
 
 logger = get_logger("agents")
+
+
+class AgentResponseModel(BaseModel):
+    agent: str
+    summary: str
+    key_points: list[str] = Field(default_factory=list)
+    risks: list[str] = Field(default_factory=list)
+    confidence: str = "medium"
+
+
+class WorkloadWeightResponseModel(BaseModel):
+    weights: dict[str, float] = Field(default_factory=dict)
+
+
+class WebResearchResponseModel(BaseModel):
+    agent: str
+    summary: str
+    key_points: list[str] = Field(default_factory=list)
+    risks: list[str] = Field(default_factory=list)
+    confidence: str = "medium"
+    sources: list[str] = Field(default_factory=list)
 
 
 def fallback(agent: str, reason: str) -> dict[str, Any]:
@@ -121,19 +150,101 @@ class AgentRunner:
                 if not enabled
                 else self.disabled_reason
             )
-        self.client = OpenAI(timeout=timeout) if self.enabled else None
+        self.timeout = timeout
 
     def model_for_agent(self, agent: str) -> str:
         if agent in WEB_RESEARCH_AGENTS:
             return self.web_model
+        if agent in STRUCTURED_DECISION_AGENTS:
+            return self.reasoning_model or self.model
         if agent in REASONING_AGENTS:
             return self.reasoning_model or self.model
         return self.fast_model or self.model
 
+    def _structured_llm(self, agent: str, schema: type[BaseModel]) -> Any:
+        return ChatOpenAI(
+            model=self.model_for_agent(agent),
+            temperature=0.2,
+            timeout=self.timeout,
+        ).with_structured_output(schema)
+
+    def _text_llm(
+        self,
+        agent: str,
+        *,
+        temperature: float = 0.2,
+        model_kwargs: dict[str, Any] | None = None,
+    ) -> ChatOpenAI:
+        return ChatOpenAI(
+            model=self.model_for_agent(agent),
+            temperature=temperature,
+            timeout=self.timeout,
+            model_kwargs=model_kwargs or {},
+        )
+
+    def resolve_workload_weights(
+        self,
+        query: str,
+        workload: str,
+        optimisation_choices: list[str] | None = None,
+    ) -> dict[str, float]:
+        agent = "WorkloadWeightAgent"
+        fallback_weights = heuristic_workload_weights(
+            query, workload, optimisation_choices or []
+        )
+        if not self.enabled:
+            logger.info(
+                "%s: using deterministic fallback (%s).", agent, self.disabled_reason
+            )
+            return fallback_weights
+        system = (
+            "You are WorkloadWeightAgent, a decision-modelling specialist for UK "
+            "data-centre site selection. Choose scoring weights for the workload "
+            "from the provided dimensions only. Return strict JSON with one key "
+            "'weights'. Weights must be non-negative numbers; include only useful "
+            "dimensions. Do not include commentary."
+        )
+        user = {
+            "query": query,
+            "selected_workload": workload,
+            "workload_profile": WORKLOAD_PROFILES.get(workload),
+            "optimisation_choices": optimisation_choices or [],
+            "allowed_dimensions": WORKLOAD_WEIGHT_DIMENSIONS,
+            "fallback_weights": fallback_weights,
+        }
+        selected_model = self.model_for_agent(agent)
+        logger.info("%s: calling OpenAI model '%s'.", agent, selected_model)
+        last_error = None
+        for attempt in range(self.max_retries + 1):
+            try:
+                response = self._structured_llm(
+                    agent,
+                    WorkloadWeightResponseModel,
+                ).invoke(
+                    [
+                        ("system", system),
+                        ("human", json.dumps(user, default=str)),
+                    ]
+                )
+                weights = response.weights
+                if isinstance(weights, dict):
+                    resolved = normalise_workload_weights(weights)
+                    logger.debug("%s resolved weights=%s.", agent, resolved)
+                    return resolved
+            except Exception as exc:
+                last_error = exc
+                logger.warning(
+                    "%s: model call attempt %s failed: %s.", agent, attempt + 1, exc
+                )
+                time.sleep(0.5 * (attempt + 1))
+        logger.info("%s: using deterministic fallback after model failure.", agent)
+        logger.debug("%s fallback reason=%s weights=%s.", agent, last_error, fallback_weights)
+        return fallback_weights
+
     def run(
         self, agent: str, query: str, workload: str, payload: dict[str, Any]
     ) -> dict[str, Any]:
-        if not self.enabled or self.client is None:
+        if not self.enabled:
             logger.info(
                 "%s: using deterministic fallback (%s).", agent, self.disabled_reason
             )
@@ -155,18 +266,19 @@ class AgentRunner:
         logger.debug("%s payload keys=%s.", agent, list(payload.keys()))
         for attempt in range(self.max_retries + 1):
             try:
-                response = self.client.chat.completions.create(
-                    model=selected_model,
-                    temperature=0.2,
-                    messages=[
-                        {"role": "system", "content": system},
-                        {"role": "user", "content": json.dumps(user, default=str)},
-                    ],
+                response = self._structured_llm(
+                    agent,
+                    AgentResponseModel,
+                ).invoke(
+                    [
+                        ("system", system),
+                        ("human", json.dumps(user, default=str)),
+                    ]
                 )
-                text = response.choices[0].message.content or ""
                 logger.info("%s: received model response.", agent)
-                logger.debug("%s response chars=%s.", agent, len(text))
-                return parse_agent_json(text, agent)
+                payload = response.model_dump()
+                logger.debug("%s response keys=%s.", agent, list(payload.keys()))
+                return payload
             except Exception as exc:
                 last_error = exc
                 logger.warning(
@@ -180,15 +292,11 @@ class AgentRunner:
         agent = "PolicyResearchAgent"
         if not self.enable_web:
             return fallback(agent, "web research disabled")
-        if not self.enabled or self.client is None:
+        if not self.enabled:
             logger.info(
                 "%s: using deterministic fallback (%s).", agent, self.disabled_reason
             )
             return fallback(agent, self.disabled_reason)
-        if not hasattr(self.client, "responses"):
-            return fallback(
-                agent, "installed OpenAI client does not expose the Responses API"
-            )
         request = {
             "query": query,
             "policy_context": payload,
@@ -206,13 +314,24 @@ class AgentRunner:
         logger.debug("%s web payload keys=%s.", agent, list(payload.keys()))
         for attempt in range(self.max_retries + 1):
             try:
-                response = self.client.responses.create(
-                    model=selected_model,
-                    tools=[{"type": "web_search_preview"}],
-                    input=json.dumps(request, default=str),
+                response = self._text_llm(
+                    agent,
                     temperature=0.2,
+                    model_kwargs={"tools": [{"type": "web_search_preview"}]},
+                ).invoke(
+                    [
+                        (
+                            "system",
+                            "You are PolicyResearchAgent. Search current UK policy context and return strict JSON with keys: agent, summary, key_points, risks, confidence, sources.",
+                        ),
+                        ("human", json.dumps(request, default=str)),
+                    ]
                 )
-                text = getattr(response, "output_text", "") or ""
+                content = response.content
+                if isinstance(content, str):
+                    text = content
+                else:
+                    text = json.dumps(content, default=str)
                 parsed = parse_agent_json(text, agent)
                 parsed.setdefault("sources", [])
                 logger.debug(

@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import re
 from typing import Any
 
 import pandas as pd
 
+from .geo_utils import haversine_km
 from .geo_utils import clamp
 from .logging_utils import get_logger
 from .policy import policy_score
@@ -20,6 +22,56 @@ data\_analysis.py
 
 """
 logger = get_logger("analysis")
+
+
+def _candidate_aliases(row: pd.Series) -> list[str]:
+    values = [str(row.get("region", "")).strip().lower()]
+    aliases = str(row.get("aliases", "")).lower()
+    if aliases:
+        values.extend(
+            token.strip()
+            for token in re.split(r"[|,;/]+", aliases)
+            if token.strip()
+        )
+    return list(dict.fromkeys(v for v in values if v))
+
+
+def resolve_anchor_region(
+    df: pd.DataFrame,
+    target_location: str | None,
+) -> pd.Series | None:
+    if not target_location:
+        return None
+    needle = str(target_location).strip().lower()
+    if not needle:
+        return None
+    exact = df[
+        df.apply(lambda row: needle in _candidate_aliases(row), axis=1)
+    ]
+    if len(exact):
+        return exact.iloc[0]
+    substring = df[
+        df.apply(
+            lambda row: any(
+                needle in alias or alias in needle for alias in _candidate_aliases(row)
+            ),
+            axis=1,
+        )
+    ]
+    if len(substring):
+        ranked = substring.assign(
+            _name_len=substring["region"].astype(str).str.len()
+        ).sort_values("_name_len")
+        return ranked.iloc[0]
+    return None
+
+
+def scope_label(constraints: UserConstraints) -> str:
+    if constraints.region_level == "radius":
+        anchor = constraints.resolved_anchor_region or constraints.target_location or "target"
+        radius = constraints.target_radius_miles or 0
+        return f"within {radius:.0f} miles of {anchor}"
+    return constraints.region_text or "UK-wide"
 
 
 def _linear(value: float, low: float, high: float, invert: bool = False) -> float:
@@ -57,7 +109,11 @@ def add_production_scores(
         constraints.workload,
         constraints.optimisation_choices,
     )
-    out = score_for_workload(add_metadata(df), constraints.workload)
+    out = score_for_workload(
+        add_metadata(df),
+        constraints.workload,
+        constraints.workload_weights,
+    )
     cap = out["renewable_capacity_50km_mw"].fillna(0)
     op = out["operational_renewable_capacity_50km_mw"].fillna(0)
     population = out["population_lad"].fillna(out["population_lad"].median())
@@ -173,6 +229,24 @@ def filter_for_scope(df: pd.DataFrame, constraints: UserConstraints) -> pd.DataF
         return df[
             df["country"].str.lower() == str(constraints.region_text).lower()
         ].copy()
+    if constraints.region_level == "radius":
+        anchor = resolve_anchor_region(df, constraints.target_location)
+        if anchor is None:
+            return df.iloc[0:0].copy()
+        constraints.resolved_anchor_region = str(anchor["region"])
+        radius_miles = constraints.target_radius_miles or 0.0
+        radius_km = radius_miles * 1.60934
+        scoped = df.copy()
+        scoped["distance_to_target_km"] = scoped.apply(
+            lambda row: haversine_km(
+                float(row["lat"]),
+                float(row["lon"]),
+                float(anchor["lat"]),
+                float(anchor["lon"]),
+            ),
+            axis=1,
+        )
+        return scoped[scoped["distance_to_target_km"] <= radius_km].copy()
     return df[df["region"].str.lower() == str(constraints.region_text).lower()].copy()
 
 
@@ -265,6 +339,42 @@ def nested_search(
             country_label,
             len(country_df),
         )
+    if constraints.region_level == "radius":
+        anchor = resolve_anchor_region(scored, constraints.target_location)
+        constraints.resolved_anchor_region = (
+            str(anchor["region"]) if anchor is not None else None
+        )
+        anchor_country = str(anchor["country"]) if anchor is not None else None
+        if anchor is not None:
+            country_df = scored[
+                scored["country"].str.lower() == str(anchor["country"]).lower()
+            ].copy()
+        else:
+            country_df = scored.iloc[0:0].copy()
+        stages.append(
+            SearchStage(
+                level="country",
+                label=f"{anchor_country or constraints.target_location} screening",
+                candidate_count=len(country_df),
+                criteria=[
+                    "national policy fit",
+                    "grid and renewable capacity",
+                    "distance to target anchor",
+                ],
+                top_regions=top_region_records(country_df, top_k),
+                blocked_reason=(
+                    None
+                    if len(country_df)
+                    else f"No cached candidate regions near {constraints.target_location}."
+                ),
+            )
+        )
+        scoped = country_df
+        logger.debug(
+            "Radius anchor country scope anchor=%s count=%s.",
+            constraints.resolved_anchor_region,
+            len(country_df),
+        )
     if constraints.region_level == "city":
         scoped = filter_for_scope(scored, constraints)
         logger.debug(
@@ -288,6 +398,33 @@ def nested_search(
                     None
                     if len(scoped)
                     else f"No cached candidate region for {constraints.region_text}."
+                ),
+            )
+        )
+    if constraints.region_level == "radius":
+        scoped = filter_for_scope(scored, constraints)
+        label = scope_label(constraints)
+        logger.debug(
+            "Radius scoped candidates label=%s count=%s.",
+            label,
+            len(scoped),
+        )
+        stages.append(
+            SearchStage(
+                level="radius",
+                label=f"{label} screening",
+                candidate_count=len(scoped),
+                criteria=[
+                    "distance to target anchor",
+                    "local infrastructure",
+                    "cost feasibility",
+                    "community strain",
+                ],
+                top_regions=top_region_records(scoped, top_k),
+                blocked_reason=(
+                    None
+                    if len(scoped)
+                    else f"No cached candidate region found {label}."
                 ),
             )
         )

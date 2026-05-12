@@ -71,7 +71,7 @@ def build_recommendations(scoped: pd.DataFrame, constraints: UserConstraints, bu
 
 
 def infer_dynamic_region(features: pd.DataFrame, constraints: UserConstraints) -> None:
-    if constraints.region_level != "uk":
+    if constraints.region_level != "uk" or constraints.target_location:
         return
     prompt = constraints.prompt.lower()
     for region in sorted(features["region"].dropna().astype(str).unique(), key=len, reverse=True):
