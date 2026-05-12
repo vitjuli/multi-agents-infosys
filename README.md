@@ -28,6 +28,18 @@ OPENAI_MODEL_REASONING=gpt-4o
 OPENAI_MODEL_WEB=gpt-4o
 ```
 
+Download the raw datasets into `data/raw/` before inspecting data or building features:
+
+```bash
+bash data_download.sh
+```
+
+If you want to force a fresh download of files that already exist locally:
+
+```bash
+FORCE_DOWNLOAD=1 bash data_download.sh
+```
+
 The current prototype expects raw files under `data/raw/` and writes cached outputs to `data/processed/`.
 
 ## Inspect Data
