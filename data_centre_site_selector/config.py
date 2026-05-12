@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from dataclasses import dataclass
 from pathlib import Path
 
 """CAM'S COMMENTS:
@@ -82,3 +83,23 @@ WORKLOAD_WEIGHTS: dict[str, dict[str, float]] = {
         "primary_hub_separation": 0.12,
     },
 }
+
+
+@dataclass(frozen=True)
+class DataHub:
+    name: str
+    lat: float
+    lon: float
+    note: str
+
+
+# Fixed list of UK commercial datacentre / fibre-interchange clusters.
+# First entry is the "primary" used by the backup_disaster_recovery workload's
+# primary_hub_separation term.
+UK_DATA_HUBS: tuple[DataHub, ...] = (
+    DataHub("Slough",           51.5105, -0.5950, "M4 corridor; Equinix LD4/5/6, Virtus, Yondr cluster"),
+    DataHub("London Docklands", 51.5101, -0.0049, "Telehouse North/East/West, Equinix LD8; Coriander Avenue E14"),
+    DataHub("Manchester",       53.4794, -2.2453, "MA1 internet exchange and northern colo cluster"),
+    DataHub("Edinburgh",        55.9533, -3.1883, "Scottish anchor; iomart, Pulsant, subsea-cable landings"),
+    DataHub("Cardiff",          51.4816, -3.1791, "Welsh anchor; Next Generation Data ~25 km NE in Newport"),
+)

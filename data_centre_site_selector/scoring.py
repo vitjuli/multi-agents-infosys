@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from .config import WORKLOAD_WEIGHTS
+from .config import UK_DATA_HUBS, WORKLOAD_WEIGHTS
 from .geo_utils import clamp, haversine_km
 from .logging_utils import get_logger
 
@@ -22,23 +22,27 @@ def _linear(value: float, low: float, high: float) -> float:
     return clamp(10 * (float(value) - low) / (high - low))
 
 
-def data_derived_hubs(df: pd.DataFrame, top_n: int = 3) -> pd.DataFrame:
-    usable = df.dropna(subset=["lat", "lon"]).copy()
-    if usable.empty:
-        return usable
-    if "population_lad" in usable:
-        usable["_hub_weight"] = pd.to_numeric(
-            usable["population_lad"], errors="coerce"
-        ).fillna(0)
-    else:
-        usable["_hub_weight"] = 0
-    if usable["_hub_weight"].sum() == 0:
-        usable["_hub_weight"] = (
-            usable["renewable_project_count_50km"].fillna(0)
-            if "renewable_project_count_50km" in usable
-            else 1
+def hub_distances(df: pd.DataFrame) -> pd.DataFrame:
+    """Distance from each candidate to every UK_DATA_HUBS entry, in km.
+
+    Assumes candidates have non-NaN lat/lon (preprocess filters NaN rows).
+    """
+    out = df.copy()
+    cols: list[str] = []
+    for hub in UK_DATA_HUBS:
+        slug = hub.name.lower().replace(" ", "_")
+        col = f"distance_to_{slug}_km"
+        # h=hub binds the loop variable so the closure captures this hub,
+        # not the last one assigned.
+        out[col] = out.apply(
+            lambda r, h=hub: haversine_km(r["lat"], r["lon"], h.lat, h.lon),
+            axis=1,
         )
-    return usable.sort_values("_hub_weight", ascending=False).head(top_n)
+        cols.append(col)
+    out["nearest_major_hub_distance_km"] = out[cols].min(axis=1)
+    primary_slug = UK_DATA_HUBS[0].name.lower().replace(" ", "_")
+    out["primary_hub_distance_km"] = out[f"distance_to_{primary_slug}_km"]
+    return out
 
 
 def add_raw_scores(df: pd.DataFrame) -> pd.DataFrame:
@@ -75,29 +79,10 @@ def add_raw_scores(df: pd.DataFrame) -> pd.DataFrame:
         "placeholder latitude cooling proxy; replace with HadUK-Grid or equivalent climate data"
     )
 
-    hubs = data_derived_hubs(out)
+    out = hub_distances(out)
     logger.debug(
-        "Data-derived hubs selected=%s.",
-        (
-            hubs[["region", "population_lad", "lat", "lon"]].to_dict(orient="records")
-            if len(hubs)
-            else []
-        ),
-    )
-    hub_distance_cols = []
-    for idx, hub in hubs.reset_index(drop=True).iterrows():
-        col = f"distance_to_data_hub_{idx + 1}_km"
-        out[col] = out.apply(
-            lambda r: haversine_km(r["lat"], r["lon"], hub["lat"], hub["lon"]), axis=1
-        )
-        hub_distance_cols.append(col)
-    out["nearest_major_hub_distance_km"] = (
-        out[hub_distance_cols].min(axis=1) if hub_distance_cols else 250.0
-    )
-    out["primary_hub_distance_km"] = (
-        out[hub_distance_cols[0]]
-        if hub_distance_cols
-        else out["nearest_major_hub_distance_km"]
+        "Computed distances to fixed UK_DATA_HUBS: %s.",
+        [hub.name for hub in UK_DATA_HUBS],
     )
     out["latency_score_raw"] = out["nearest_major_hub_distance_km"].map(
         lambda d: clamp(10 - (d / 45))
